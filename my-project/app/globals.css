@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply bg-background text-foreground;
+}
+
+.sidebar-item {
+  @apply flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-foreground-500 transition-colors hover:bg-content2 hover:text-foreground-800;
+}
+
+.sidebar-item.active {
+  @apply bg-content2 text-foreground-800;
+}
+
+.sidebar-item-icon {
+  @apply text-foreground-500 text-lg;
+}
+
+.sidebar-item-badge {
+  @apply ml-auto px-1.5 py-0.5 text-xs rounded-full bg-content3 text-foreground-600;
+}
+
+.sidebar-item-new {
+  @apply ml-auto px-1.5 py-0.5 text-xs rounded-full bg-content3 text-foreground-600;
+}
+
+.team-badge {
+  @apply flex items-center justify-center w-8 h-8 rounded-md text-xs font-medium;
+}
