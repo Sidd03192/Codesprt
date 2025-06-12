@@ -1,10 +1,11 @@
 import React from "react";
 import { Card, CardBody, CardHeader, Button, Input, Tabs, Tab, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { Code, CircleX } from "lucide-react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
 import AssignmentDropdown from "../../components/dropdown";
-
+import { RichTextEditor } from "../../components/assignment/RichText/rich-description";
 export const Assignments = () => {
   const [selected, setSelected] = React.useState("all");
   const [searchValue, setSearchValue] = React.useState("");
@@ -94,10 +95,16 @@ export const Assignments = () => {
             <Icon icon="lucide:plus" className="mr-1" />
             Create Assignment
           </Button>
-          <Modal isOpen={open}  onClose={() => setOpen(false)}
+          <Modal isOpen={open}  onClose={() => setOpen(false)} closeButton={<Button isIconOnly={true} variant="light" color="danger"><CircleX color="red"/> </Button>}
             className="max-h-[90vh] max-w-[90vw] overflow-y-auto"
           >
-        <ModalContent className="w-[100%]">
+            <ModalContent className="w-[100%]" >
+              <ModalHeader className="flex border-zinc-800 bg-zinc-900  ">
+                          <div className="flex items-center gap-3">
+                            <Code className="text-2xl" color="white"/>
+                            <h1 className="text-xl font-semibold">Assignment Creator</h1>
+                          </div>
+              </ModalHeader>
                 <CreateAssignmentPage />
               
         </ModalContent>

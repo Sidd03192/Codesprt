@@ -21,12 +21,12 @@ import {
   Tooltip,
   
 } from "@heroui/react";
-import Editor from "@monaco-editor/react";
 import React from "react";
-import { Code , WandSparkles, LassoSelect,Upload, ArrowUpFromLine } from "lucide-react";
-
-
-
+import { Code , WandSparkles, LassoSelect,Upload, ArrowUpFromLine,FlaskConical ,FileSliders,MonitorCog   } from "lucide-react";
+import { Icon } from "@iconify/react";
+import { RichTextEditor } from "./RichText/rich-description";
+import { useRef } from "react";
+import CodeEditor from "../editor/code-editor";
 
 export default function CreateAssignmentPage() {
   const [formData, setFormData] = React.useState({
@@ -51,7 +51,7 @@ export default function CreateAssignmentPage() {
     expectedOutput: "",
     isHidden: false,
   });
-  
+  const [allowAutocomplete, setAllowAutocomplete] = React.useState(true);
   // Mock class data
   const [classes] = React.useState([
     {
@@ -178,6 +178,8 @@ export default function CreateAssignmentPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Form submitted:", formData);
+    // update form data with the code. 
+    const code = editorRef.current.getValue(); // double check that thsi works
     // Here you would typically send the data to your backend
   };
   
@@ -187,31 +189,23 @@ export default function CreateAssignmentPage() {
   };
   
   const languages = [
-    
-    { key: "python", name: "Python" },
-    { key: "java", name: "Java" },
-    {key: "C++", name: "C++" },
-    { key: "C", name: "C" },
-   
-  ];
+   { key: "python", name: "Python" },
+   { key: "java",   name: "Java"   },
+   { key: "cpp",    name: "C++"    },
+  { key: "c",      name: "C"      },
+ ];
 
   return (
     <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
-      <header className="sticky top-0 z-100 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-md">
-        <div className="mx-auto flex w-full items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <Code className="text-2xl" color="white"/>
-            <h1 className="text-xl font-semibold">Assignment Creator</h1>
-          </div>
-        </div>
-      </header>
+
+      
       
       <main className="mx-auto w-full p-4 pb-5">
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Assignment Details Card */}
-          <Card  className="bg-zinc-800/40 p-6 ">
+          <Card  className="bg-zinc-800/40 p-6 w-full">
             <h2 className="mb-6 text-xl font-semibold">Assignment Details</h2>
-            <div className="grid  gap-6 md:grid-cols-2">
+            <div className="grid  gap-6 lg:grid-cols-2">
               <Input
                 isRequired
                 
@@ -223,7 +217,7 @@ export default function CreateAssignmentPage() {
 
               />
               <div className="flex  gap-4 ">
-                <DatePicker
+                <DatePicker isRequired
                     hideTimeZone
                     showMonthAndYearPickers
                     label="Open Assignment at"
@@ -233,7 +227,7 @@ export default function CreateAssignmentPage() {
                     onValueChange={(value) => handleFormChange("startDate", value)}
                       />
                 <DatePicker
-                    hideTimeZone
+                    hideTimeZone isRequired
                     showMonthAndYearPickers
                     label="Close Assignment at"
                     variant="bordered"
@@ -245,26 +239,9 @@ export default function CreateAssignmentPage() {
               </div>
               
                 
-                <Textarea
-                isRequired
-                className="md:col-span-2"
-                label="Assignment Description"
-                minRows={3}
-                placeholder="Enter assignment guidelines"
-                value={formData.description}
-                variant="bordered"
-                onValueChange={(value) => handleFormChange("description", value)}
-                endContent={
-                  <Tooltip
-                    content={<p>Generates description using provided code templ</p> }
-                    color="secondary"
-                  >
-                     <Button color="secondary" variant="flat" className="" endContent={<WandSparkles size={40} />} >Generate with AI</Button>
-
-                  </Tooltip>
-
-                }
-              />
+               
+              <RichTextEditor className="md:col-span-2 bg-zinc-200" isRequired />
+              
               
 
 
@@ -287,21 +264,8 @@ export default function CreateAssignmentPage() {
               
             </div>
             
-            <div className="mt-6 flex flex-wrap gap-4">
-              <Checkbox
-                isSelected={formData.allowPartialSubmission}
-                onValueChange={(value) => handleFormChange("allowPartialSubmission", value)}
-              >
-                Allow partial submissions
-              </Checkbox>
-              <Checkbox
-                isSelected={formData.allowLateSubmission}
-                onValueChange={(value) => handleFormChange("allowLateSubmission", value)}
-              >
-                Allow late submissions
-              </Checkbox>
-            </div>
             
+            {/* Students */}
             {selectedClass && (
               <div className="mt-6">
                 <div className="mb-2 flex items-center justify-between">
@@ -348,45 +312,34 @@ export default function CreateAssignmentPage() {
           </Card>
           
           {/* Code Template and Settings Split Screen */}
-          <div className="grid grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Code Template Section - 60% width */}
-            <Card className="col-span-3 bg-zinc-800/40 p-6">
+            <Card className="col-span-1 lg:col-span-3 bg-zinc-800/40 p-6">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Code Template</h2>
-                <div className="flex items-center gap-2">
-                  <Select className="min-w-[120px]"      placeholder="Language"      defaultSelectedKeys={["Java"]}
- onChange={(e) => setSelectedLanguage(e.target.value)}>
-                    {languages.map((language) => (
-                      <SelectItem key={language.key}>{language.name}</SelectItem>
-                    ))}
-                  </Select>
-                  {/* <Dropdown>
-                    <DropdownTrigger>
-                      <Button variant="flat" size="sm">
-                        {languages.find((lang) => lang.key === selectedLanguage)?.name || "Language"}
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
-                      aria-label="Programming Languages"
-                      selectedKeys={[selectedLanguage]}
-                      selectionMode="single"
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0]?.toString();
-                        if (selected) setSelectedLanguage(selected);
-                      }}
+                <div className="flex items-center gap-2 w-fit">
+                  <Select
+                    placeholder="Select a language"
+                      className="min-w-[120px]"
+                      value={selectedLanguage}
+                      onChange={(e) => setSelectedLanguage(e.target.value)}
                     >
                       {languages.map((lang) => (
-                        <DropdownItem key={lang.key}>{lang.name}</DropdownItem>
+                        <SelectItem key={lang.key} value={lang.key}>
+                          {lang.name}
+                        </SelectItem>
                       ))}
-                    </DropdownMenu>
-                  </Dropdown> */}
-                  
+                    </Select>
+
+      
                   
                   <Button
                     variant="flat"
                     color="primary"
+                    className="min-w-[100px] "
                     onPress={triggerFileUpload}
                   >
+                    <Icon icon="lucide:upload" className="" />
                     Upload
                   </Button>
 
@@ -405,32 +358,31 @@ export default function CreateAssignmentPage() {
                 Click on the line numbers to lock/unlock lines for students.
               </p>
               
-              <div className="rounded-medium border bg-zinc-800/40">
-                <Editor
-                  height="600px"
-                  language={selectedLanguage}
-                  theme="vs-dark"
-                  value={formData.codeTemplate}
-                  onChange={(value) => handleFormChange("codeTemplate", value || "")}
-                  onMount={handleEditorDidMount}
-                  options={{
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    fontSize: 14,
-                    lineNumbers: "on",
-                  }}
-                />
-              </div>
-            </Card>
-            
-            {/* Assignment Settings & Test Cases - 40% width */}
-            <Card className="col-span-2 bg-zinc-800/40 p-6">
-              <h2 className="mb-6 text-xl font-semibold">Assignment Settings</h2>
               
-              <ScrollShadow className="h-[600px] pr-2">
-                <div className="space-y-8">
-                  {/* Test Cases Section */}
-                  <div className="space-y-6">
+                  <CodeEditor
+                    language={selectedLanguage}
+                editorRef={editorRef}
+                enabledAutocomplete={allowAutocomplete}
+                  />            </Card>
+              
+            {/* Assignment Settings & Test Cases - 40% width */}
+            <Card className="col-span-1 lg:col-span-2 bg-zinc-800/40 p-6">
+              <h2 className="mb-6 text-xl font-semibold">Assignment Settings</h2>
+                <Tabs
+                  color="default"
+                  variant="bordered"
+              >
+                {/* Test Cases Section */}
+                <Tab
+                  key="photos"
+                  title={
+                    <div className="flex items-center space-x-1">
+                      <FlaskConical size={15} />
+                      <span>Test Cases</span>
+                      
+                    </div>
+                  }
+                > <div className="space-y-6">
                     <h3 className="text-lg font-medium">Test Cases</h3>
                     <div className="space-y-4">
                       <div className="space-y-4">
@@ -522,24 +474,42 @@ export default function CreateAssignmentPage() {
                       )}
                     </div>
                   </div>
+                </Tab>
                   
-                  <Divider className="bg-zinc-700" />
-                  
-                  {/* Grading Options Section */}
-                  <div className="space-y-4">
+                  <Tab
+                  key="items"
+                  title={
+                    <div className="flex items-center space-x-1">
+                      <MonitorCog  size={15}/>
+                      <span>Settings</span>
+                    </div>
+                  }
+                >
+                    <div className="space-y-4">
                     <h3 className="text-lg font-medium">Grading Options</h3>
                     <p className="text-zinc-400">
                       Configure how this assignment will be graded.
                     </p>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-4">
                       <Checkbox defaultSelected>
                         Auto-grade test cases
                       </Checkbox>
                       <Checkbox>
                         Check for code style
                       </Checkbox>
+                      
+                      <Tooltip className="max-w-[300px]" content={<div>
+                          {"Includes class methods & variable names"}
+                          <br/>
+                          {"(its harmless)"}
+                        </div>}>
+                        <Checkbox value={allowAutocomplete} onValueChange={(value) => setAllowAutocomplete(value)}>
+                        Disable autocomplete
+                        </Checkbox>
+                        
+                      </Tooltip>
                       <Checkbox>
-                        Run plagiarism detection
+                        Allow copy & paste
                       </Checkbox>
                     </div>
                     
@@ -568,8 +538,11 @@ export default function CreateAssignmentPage() {
                       />
                     </div>
                   </div>
-                </div>
-              </ScrollShadow>
+                </Tab>
+                  
+                  {/* Grading Options Section */}
+                  
+              </Tabs>
             </Card>
           </div>
           
@@ -587,9 +560,7 @@ export default function CreateAssignmentPage() {
                     <Checkbox>
                       Show test results immediately
                     </Checkbox>
-                    <Checkbox>
-                      Require comments with submission
-                    </Checkbox>
+                    
                   </div>
                 </div>
                 
@@ -607,20 +578,20 @@ export default function CreateAssignmentPage() {
                       min="0"
                       variant="bordered"
                     />
-                    <Select
-                      classNames={{
-                        trigger: "bg-zinc-700",
-                      }}
-                      label="Time Between Submissions"
-                      placeholder="Select time limit"
-                    >
-                      <SelectItem key="none">No limit</SelectItem>
-                      <SelectItem key="1min">1 minute</SelectItem>
-                      <SelectItem key="5min">5 minutes</SelectItem>
-                      <SelectItem key="15min">15 minutes</SelectItem>
-                      <SelectItem key="30min">30 minutes</SelectItem>
-                      <SelectItem key="1hour">1 hour</SelectItem>
-                    </Select>
+                    <div className="mt-6 flex flex-wrap gap-4">
+              <Checkbox
+                isSelected={formData.allowPartialSubmission}
+                onValueChange={(value) => handleFormChange("allowPartialSubmission", value)}
+              >
+                Allow partial submissions
+              </Checkbox>
+              <Checkbox
+                isSelected={formData.allowLateSubmission}
+                onValueChange={(value) => handleFormChange("allowLateSubmission", value)}
+              >
+                Allow late submissions
+              </Checkbox>
+            </div>
                   </div>
                 </div>
               </div>
@@ -639,7 +610,7 @@ export default function CreateAssignmentPage() {
             
             <div className="flex gap-2">
               <Button size="lg" variant="flat">
-                Save Draft
+                Export
               </Button>
               <Button color="primary" size="lg" type="submit">
                 Create Assignment
