@@ -2,7 +2,7 @@
 import { insertUserIfNew } from "./api";
 
 import React from "react";
-import { Drawer, DrawerContent, DrawerHeader, DrawerBody, Button, useDisclosure } from "@heroui/react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerBody, Button, useDisclosure, Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Sidebar } from "../components/sidebar";
 import { supabase } from "../supabase-client";
@@ -19,6 +19,8 @@ import { StudentCourses } from "./pages/student/courses";
 export default function Dashboard() {
     const [userType, setUserType] = React.useState("teacher"); // "teacher" or "student"
 
+  
+  // update user data if new user
 const [session, setSession] = useState(null);
     const fetchSession = async () => {
         const currentSession = await supabase.auth.getSession();
@@ -136,7 +138,7 @@ const [session, setSession] = useState(null);
           <DrawerContent>
             {(onClose) => (
               <>
-                <DrawerHeader className="border-b border-divider">
+                <DrawerHeader className="border-b border-divider ">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="rounded-full bg-content3 p-1">
@@ -166,10 +168,11 @@ const [session, setSession] = useState(null);
       )}
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden w-full">
         {/* Header */}
-        <header className="flex h-14 items-center justify-betweenborder-b border-divider px-4">
-          <Button
+        <header className="flex h-12 items-center  border-b  bg-content1 justify-between  border-divider px-1">
+          <div className="flex ">
+            <Button
             isIconOnly
             variant="light"
             onPress={toggleSidebar}
@@ -191,7 +194,15 @@ const [session, setSession] = useState(null);
               className="text-lg" 
             />
             <h1 className="text-lg font-medium capitalize">{activePage}</h1>
+            <div>
+              
+            </div>
           </div>
+          </div>
+          <Avatar
+            src="https://img.heroui.chat/image/avatar?w=40&h=40&u=teacher1"
+            className="h-8 w-8"
+          />
           
         </header>
 

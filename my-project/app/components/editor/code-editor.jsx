@@ -46,34 +46,57 @@ export default function CodeEditor({ language, editorRef, enabledAutocomplete, }
       }
     });
   }
-
-
   // whenever checkedLines changes, update the decorations
   useEffect(() => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
     if (!editor || !monaco) return;
 
-    // build one decoration per checked line
-    const newDecs = Array.from(checkedLines).map(line => ({
+    // Get current model and line count
+    const model = editor.getModel();
+    if (!model) return;
+    
+    const totalLines = model.getLineCount();
+    
+    // Filter out lines that don't exist anymore
+    const validLines = Array.from(checkedLines).filter(line => line <= totalLines);
+      // build one decoration per checked line
+    const newDecs = validLines.map(line => ({
       range: new monaco.Range(line, 1, line, 1),
       options: {
         glyphMarginClassName: 'checkboxGlyph',
-        glyphMarginHoverMessage: { value: 'locked' }
+        glyphMarginHoverMessage: { value: 'Locked line' },
+        className: 'locked-line-highlight',
+        isWholeLine: true,
+        stickiness: monaco.editor.TrackedRangeStickiness.GrowsOnlyWhenTypingBefore
       }
     }));
 
     // apply them, replacing the old ones
     const newIds = editor.deltaDecorations(decorIds, newDecs);
     setDecorIds(newIds);
-  }, [checkedLines]);
-  // lock styles
+  }, [checkedLines]);  // lock styles
 useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
       .monaco-editor .checkboxGlyph {
         background: url('./llee.svg') no-repeat center center;
-        
+        background-size: 14px;
+        cursor: pointer;
+        margin-left: 2px;
+        width: 20px !important;
+        height: 20px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background-color: rgba(217, 72, 15, 0.4);
+      }
+      .monaco-editor .checkboxGlyph:hover {
+        background-color: rgba(217, 72, 15, 0.6);
+      }
+      .monaco-editor .locked-line-highlight {
+        background-color: rgba(51, 153, 255, 0.1) !important;
       }
     `;
     document.head.appendChild(style);
@@ -257,6 +280,62 @@ useEffect(() => {
  
 }, [monaco,editor, language, ]);
 
+  // Clean up invalid locked lines when content changes  // Handle content changes and line number updates
+  useEffect(() => {
+    if (!editor || !monaco) return;
+    
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Handle model content changes
+    const disposable = model.onDidChangeContent(e => {
+      const changes = e.changes;
+      
+      // Update checked lines based on line number changes
+      setCheckedLines(prev => {
+        const next = new Set();
+        
+        prev.forEach(line => {
+          let newLine = line;
+          
+          // Apply each change to determine new line numbers
+          for (const change of changes) {
+            if (change.range.startLineNumber <= line) {
+              const lineDelta = 
+                change.text.split('\n').length - 1 - 
+                (change.range.endLineNumber - change.range.startLineNumber);
+              
+              if (line >= change.range.startLineNumber) {
+                newLine += lineDelta;
+              }
+            }
+          }
+          
+          // Only keep the line if it still exists
+          if (newLine > 0 && newLine <= model.getLineCount()) {
+            next.add(newLine);
+          }
+        });
+        
+        return next;
+      });
+    });
+
+    return () => disposable.dispose();
+  }, [editor, monaco]);
+
+  // Clean up invalid lines when content changes
+  useEffect(() => {
+    if (!editor) return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    const totalLines = model.getLineCount();
+    setCheckedLines(prev => {
+      const next = new Set([...prev].filter(line => line <= totalLines));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [val, editor]);
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-800/40">
