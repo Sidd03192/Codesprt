@@ -17,7 +17,20 @@ export const Toolbar = ({ editor }) => {
   const [imageUrl, setImageUrl] = useState('');
   // Dummy state 
   const [_, setRender] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const enhanceWithAI = async () => {
+    if (!editor) return;
+    const userInput = editor.getText();
+    const res = await fetch('/api/enhance-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: userInput }),
+    });
 
+    const { improved } = await res.json();
+
+    editor.commands.setContent(improved); 
+  };
 
   useEffect(() => {
     if (editor) {  // sid ahh fix... need to look into this and make more efficient. 
@@ -243,9 +256,9 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
+          onPress = {enhanceWithAI}
           variant={editor.isActive('codeBlock') ? 'solid' : 'light'}
           color={editor.isActive('codeBlock') ? 'primary' : 'default'}
-          
           aria-label="Code Block"
           className='shadow-lg'
         >

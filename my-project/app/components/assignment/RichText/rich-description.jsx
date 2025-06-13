@@ -3,13 +3,6 @@
 // future features.: Include better table ui in the description. 
 
 
-
-
-
-
-
-
-
 import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
