@@ -27,9 +27,9 @@ export const Toolbar = ({ editor }) => {
       body: JSON.stringify({ prompt: userInput }),
     });
 
-    const { improved } = await res.json();
+    const { html } = await res.json();
 
-    editor.commands.setContent(improved); 
+    editor.commands.setContent(html, 'html'); 
   };
 
   useEffect(() => {
