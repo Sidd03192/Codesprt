@@ -1,7 +1,7 @@
 .rich-text-editor {
   border-radius: 12px;
-  overflow: hidden;
   background-color: transparent;
+  max-height: 500px; /* or desired height */
 }
 
 .editor-content-wrapper {

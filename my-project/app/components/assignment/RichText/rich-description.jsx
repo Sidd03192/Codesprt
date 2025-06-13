@@ -106,12 +106,15 @@ export const RichTextEditor = ({ className}) => {
             <span className="text-danger">*</span>
           </label>
         </div>
-        <div className="md:col-span-2 rich-text-editor rounded-large border border-default-200 bg-content1 ">
-      <Toolbar editor={editor} />
-      <div className="editor-content-wrapper border-t border-divider bg-white">
-        <EditorContent editor={editor} />
-      </div>
-    </div>
+        <div className="rich-text-editor rounded-large border border-default-200 bg-content1 relative">
+  <div className="sticky top-0 z-10 border-divider border-b">
+    <Toolbar editor={editor} />
+  </div>
+  <div className="editor-content-wrapper   bg-white max-h-[300px] overflow-y-auto">
+    <EditorContent editor={editor} />
+  </div>
+</div>
+
       </div>
   );
 };
