@@ -2,6 +2,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { Avatar } from "@heroui/react";
+import Image from "next/image";
 
 export const Sidebar = ({ isCollapsed, activePage, setActivePage }) => {
   // Navigation items - updated for teacher dashboard
@@ -20,7 +21,7 @@ export const Sidebar = ({ isCollapsed, activePage, setActivePage }) => {
     { icon: "lucide:settings", label: "Settings" },
   ];
 
-  // Team items - classes instead of teams
+  // Dummy classes ( need to connect with supabase)
   const teamItems = [
     { id: "math", name: "Mathematics 101", shortName: "MA", color: "bg-blue-600" },
     { id: "sci", name: "Science 202", shortName: "SC", color: "bg-purple-600" },
@@ -28,44 +29,33 @@ export const Sidebar = ({ isCollapsed, activePage, setActivePage }) => {
   ];
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto py-4 ">
+    <div className="flex h-full flex-col overflow-y-auto border-b ">
       {/* Logo */}
-      <div className={`mb-4 px-4 ${isCollapsed ? "flex justify-center" : ""}`}>
+      <div className={`mb-4  px-2 ${isCollapsed ? "flex justify-center" : " hover:bg-content2 rounded-2xl cursor-pointer"}`}>
         {isCollapsed ? (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-content3">
-            <Icon icon="lucide:book-open" className="text-foreground" />
-          </div>
+<Image
+                src="/2.png"
+                alt="Code Sprout Logo"
+                width={30}
+                height={30}
+              />          
         ) : (
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-content3">
-              <Icon icon="lucide:book-open" className="text-foreground" />
+          <div className="flex items-center ">
+            <div className="flex hover:bg-content2 h-12 w-12 items-center justify-center rounded-full bg-transparent">
+              <Image
+                src="/2.png"
+                alt="Code Sprout Logo"
+                width={30}
+                height={30}
+                className=""
+              />
             </div>
-            <span className="font-bold">Teacher Dashboard</span>
+            <span className="">Teacher Dashboard</span>
           </div>
         )}
       </div>
 
-      {/* User Profile */}
-      <div className={`mb-6 px-4 ${isCollapsed ? "flex justify-center" : ""}`}>
-        {isCollapsed ? (
-          <Avatar
-            src="https://img.heroui.chat/image/avatar?w=40&h=40&u=teacher1"
-            className="h-8 w-8"
-          />
-        ) : (
-          <div className="flex items-center gap-2">
-            <Avatar
-              src="https://img.heroui.chat/image/avatar?w=40&h=40&u=teacher1"
-              className="h-10 w-10"
-            />
-            <div>
-              <p className="font-medium">John Doe</p>
-              <p className="text-xs text-foreground-500">Science Teacher</p>
-            </div>
-          </div>
-        )}
-      </div>
-
+      
       {/* Navigation - Overview */}
       <div className="mb-4 px-2">
         {!isCollapsed && (
