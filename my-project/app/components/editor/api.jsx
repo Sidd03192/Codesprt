@@ -1,36 +1,57 @@
 import axios from 'axios';
 
-
 const API = axios.create({
   baseURL: 'https://emkc.org/api/v2/piston',
   headers: {
     'Content-Type': 'application/json',
   },
 });
-const LanguageVersions = {
-  javascript: '18.15.0',
-  python: '3.10.0',
-  java: '6.12.0',
+
+export const getAvailableRuntimes = async () => {
+  try {
+    const response = await API.get('/runtimes');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching runtimes:', error.message);
+    return [];
+  }
 };
 
+const getVersionForLanguage = async (language) => {
+  const runtimes = await getAvailableRuntimes();
+  const runtime = runtimes.find(r => r.language === language);
+  return runtime?.version || null;
+};
 
 export const executeCode = async (language, sourceCode) => {
+  try {
     console.log('Executing code in language:', language);
+
+    const version = await getVersionForLanguage(language);
+    if (!version) {
+      throw new Error(`Unsupported language or version not found: ${language}`);
+    }
+
     const response = await API.post('/execute', {
-        "language": language,
-        "version": LanguageVersions[language],
-        "files": [
-            {
-                "content": sourceCode,
-            }
-        ],
+      language,
+      version,
+      files: [
+        {
+          content: sourceCode,
+        }
+      ],
     });
-    
 
-
-    // need to add timeouts. 
-
-  
-console.log(response.data);
-  return response.data;
-}
+    console.log('Execution result:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Execution error:', error.response?.data || error.message);
+    return {
+      run: {
+        stdout: '',
+        stderr: 'Execution failed: ' + (error.response?.data?.message || error.message),
+        output: '',
+      }
+    };
+  }
+};

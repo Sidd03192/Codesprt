@@ -147,13 +147,13 @@ const runCode = async () => {
   try {
     setIsRunning(true);
     const result = await executeCode(selectedLanguage, code);
-    
-    // Prefer stdout/stderr/output from the run field
     const runResult = result.run || {};
     const finalOutput = runResult.output || runResult.stdout || runResult.stderr || "No output.";
 
     setOutput(finalOutput);
+
   } catch (error) {
+    console.error(error);
     console.error("Execution failed:", error);
     setOutput("Execution failed.");
   } finally {
@@ -222,6 +222,7 @@ const runCode = async () => {
    { key: "java",   name: "Java"   },
    { key: "cpp",    name: "C++"    },
   { key: "c",      name: "C"      },
+  { key:"javascript", name: "Javascript"},
  ];
 
   return (
@@ -671,4 +672,3 @@ const runCode = async () => {
     </div>
   );
 }
-
