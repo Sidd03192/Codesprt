@@ -174,7 +174,7 @@ export  const javaKeywords = [
       'import','instanceof','int','interface','long','native','new','package',
       'private','protected','public','return','short','static','strictfp',
       'super','switch','synchronized','this','throw','throws','transient',
-      'try','void','volatile','while'
+      'try','void','volatile','while','System'
 ];
     
 export const pythonLibMethods = {
