@@ -270,7 +270,7 @@ const runCode = async () => {
               
                 
                
-              <RichTextEditor className="md:col-span-2 bg-zinc-200" isRequired />
+              <RichTextEditor className="md:col-span-2 bg-zinc-200 max-h-[400px]" isRequired />
               
               
 

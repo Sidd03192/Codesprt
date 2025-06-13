@@ -214,6 +214,7 @@ export const Toolbar = ({ editor }) => {
       </Tooltip>
 
       {/* Code Block */}
+
       <Tooltip content="Code Block" placement="bottom">
         <Button
           isIconOnly
@@ -252,7 +253,7 @@ export const Toolbar = ({ editor }) => {
       </Popover>
             <div className="h-6 w-[.5px] bg-divider mx-1"></div>
 
-        <Tooltip content="Enhance with AI" placement="top" >
+        <Tooltip content="Enhance with AI (Beta)" placement="top" >
         <Button
           isIconOnly
           size="sm"
