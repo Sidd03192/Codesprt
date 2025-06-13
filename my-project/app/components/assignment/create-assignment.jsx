@@ -23,9 +23,11 @@ import {
 } from "@heroui/react";
 import React from "react";
 import { Code , WandSparkles, LassoSelect,Upload, ArrowUpFromLine,FlaskConical ,FileSliders,MonitorCog   } from "lucide-react";
+import { useState} from "react";
 import { Icon } from "@iconify/react";
 import { RichTextEditor } from "./RichText/rich-description";
 import { useRef } from "react";
+import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
 
 export default function CreateAssignmentPage() {
@@ -131,7 +133,34 @@ export default function CreateAssignmentPage() {
     // For demonstration purposes, we'll just log the action
     console.log(`Toggled lock on line ${lineNumber}`);
   };
-  
+
+  const [output, setOutput] = useState("");
+const [isRunning, setIsRunning] = useState(false);
+
+const runCode = async () => {
+  const code = editorRef.current?.getValue?.();
+  if (!code || !selectedLanguage) {
+    setOutput("Please select a language and write some code.");
+    return;
+  }
+
+  try {
+    setIsRunning(true);
+    const result = await executeCode(selectedLanguage, code);
+    const runResult = result.run || {};
+    const finalOutput = runResult.output || runResult.stdout || runResult.stderr || "No output.";
+
+    setOutput(finalOutput);
+
+  } catch (error) {
+    console.error(error);
+    console.error("Execution failed:", error);
+    setOutput("Execution failed.");
+  } finally {
+    setIsRunning(false);
+  }
+};
+
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -193,6 +222,7 @@ export default function CreateAssignmentPage() {
    { key: "java",   name: "Java"   },
    { key: "cpp",    name: "C++"    },
   { key: "c",      name: "C"      },
+  { key:"javascript", name: "Javascript"},
  ];
 
   return (
@@ -343,6 +373,17 @@ export default function CreateAssignmentPage() {
                     Upload
                   </Button>
 
+                  <Button
+                    variant="flat"
+                    color="success"
+                    className="min-w-[100px]"
+                    onPress={runCode}
+                    isDisabled={isRunning}
+                  >
+                    <Icon icon="lucide:play" />
+                    {isRunning ? "Running..." : "Run"}
+                  </Button>
+
 
                   <input
                     ref={fileInputRef}
@@ -363,7 +404,16 @@ export default function CreateAssignmentPage() {
                     language={selectedLanguage}
                 editorRef={editorRef}
                 enabledAutocomplete={allowAutocomplete}
-                  />            </Card>
+                  />
+                  
+                  {output && (
+  <div className="mt-4 p-4 bg-black text-white rounded-lg">
+    <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
+    <pre className="whitespace-pre-wrap">{output}</pre>
+  </div>
+)}
+                  
+                              </Card>
               
             {/* Assignment Settings & Test Cases - 40% width */}
             <Card className="col-span-1 lg:col-span-2 bg-zinc-800/40 p-6">
@@ -622,4 +672,3 @@ export default function CreateAssignmentPage() {
     </div>
   );
 }
-
