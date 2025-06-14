@@ -92,7 +92,7 @@ const HeroSection = () => {
               </motion.button>
               <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
                 <ModalContent>
-                  <ModalHeader className="flex flex-col gap-1">Modal Title</ModalHeader>
+                  <ModalHeader className="flex flex-col gap-1">Join Waitlist</ModalHeader>
                   <ModalBody>
                     <Input placeholder="Enter your email" className="mb-4" />
                     <Button onClick={onOpenChange}>Submit</Button>
