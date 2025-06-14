@@ -18,6 +18,8 @@ export const Toolbar = ({ editor }) => {
   // Dummy state 
   const [_, setRender] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [enhancedPrompt, setEnhancedPrompt] = useState('');
   const enhanceWithAI = async () => {
     if (!editor) return;
     const userInput = editor.getText();
@@ -253,19 +255,44 @@ export const Toolbar = ({ editor }) => {
       </Popover>
             <div className="h-6 w-[.5px] bg-divider mx-1"></div>
 
-        <Tooltip content="Enhance with AI (Beta)" placement="top" >
-        <Button
-          isIconOnly
-          size="sm"
-          onPress = {enhanceWithAI}
-          variant={editor.isActive('codeBlock') ? 'solid' : 'light'}
-          color={editor.isActive('codeBlock') ? 'primary' : 'default'}
-          aria-label="Code Block"
-          className='shadow-lg'
-        >
-          <Icon icon="lucide:wand-sparkles" className="text-lg" color='#8b5cf6' />
-        </Button>
-      </Tooltip>
+      <Popover isOpen ={isOpen}>
+
+        <PopoverTrigger>
+          <div>
+               <Tooltip content="Enhance with AI (Beta)" placement="top" >
+
+              <Button
+                isIconOnly
+                size="sm"
+                onPress={isOpen ? () => setIsOpen(false) : () => setIsOpen(true)}
+                
+                variant={editor.isActive('codeBlock') ? 'solid' : 'light'}
+                color={editor.isActive('codeBlock') ? 'primary' : 'default'}
+                aria-label="Code Block"
+                className='shadow-lg'
+              >
+                <Icon icon="lucide:wand-sparkles" className="text-lg" color='#8b5cf6' />
+            </Button>
+             </Tooltip>
+          </div>
+               
+          </PopoverTrigger>
+      <PopoverContent>
+        <div className="p-2 flex flex-col gap-2">
+          <Input
+            label="Prompt Details"
+            placeholder=""
+            value={enhancedPrompt}
+            onValueChange={setEnhancedPrompt}
+          />
+          <Button size="sm" color="primary" onPress={addImage}>
+            Enhance
+            </Button>
+            
+        </div>
+      </PopoverContent>
+      </Popover>
+     
 
     </div>
   );

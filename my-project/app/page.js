@@ -6,6 +6,7 @@ import { Button } from "@heroui/react";
 import { supabase } from "./supabase-client";
 import { useEffect, useState } from "react";
 import Navigation from "./components/nav";
+import LandingPage from "./otherpages/landing";
 export default function Home() {
 
 
@@ -41,7 +42,7 @@ export default function Home() {
 
   return (
     <>
-      {/* Need to edit this component */}
+      {/* Need to edit this component
       <Navigation session={session}></Navigation> 
 
 
@@ -51,7 +52,9 @@ export default function Home() {
 ) }
       
       
-    </div>
+    </div> */}
+      
+      <LandingPage></LandingPage>
    </>
     
     
