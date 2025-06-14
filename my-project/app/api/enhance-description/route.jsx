@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai'; 
+import {marked} from 'marked';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -79,7 +80,8 @@ Do not include emojis. Output must be structured and professional.`
 
 
     const improved = response.choices[0].message.content;
-    return NextResponse.json({ improved });
+    const html = marked(improved);
+    return NextResponse.json({ html });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
