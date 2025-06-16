@@ -597,7 +597,7 @@ useEffect(() => {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-800/40">
       {/* Button to add eye icons to selection */}
-      <div className="p-2 border-b border-zinc-700 bg-zinc-900/50">
+      <div className="p-2 border-b border-zinc-700 bg-zinc-900/50 flex justify-end">
         <button type='button'
           onClick={addEyeToSelection}
           className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"

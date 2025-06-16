@@ -19,11 +19,19 @@ import {
   DatePicker,
   Form,
   Tooltip,
-  
 } from "@heroui/react";
 import React from "react";
-import { Code , WandSparkles, LassoSelect,Upload, ArrowUpFromLine,FlaskConical ,FileSliders,MonitorCog   } from "lucide-react";
-import { useState} from "react";
+import {
+  Code,
+  WandSparkles,
+  LassoSelect,
+  Upload,
+  ArrowUpFromLine,
+  FlaskConical,
+  FileSliders,
+  MonitorCog,
+} from "lucide-react";
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { RichTextEditor } from "./RichText/rich-description";
 import { useRef } from "react";
@@ -38,12 +46,13 @@ export default function CreateAssignmentPage() {
     startDate: null,
     classId: "",
     selectedStudentIds: [],
-    codeTemplate: "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
+    codeTemplate:
+      "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
     testCases: [],
     allowPartialSubmission: false,
     allowLateSubmission: false,
   });
-  
+
   const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
   const editorRef = React.useRef(null);
   const fileInputRef = React.useRef(null);
@@ -60,74 +69,111 @@ export default function CreateAssignmentPage() {
       id: "cs101",
       name: "CS101: Introduction to Programming",
       students: [
-        { id: "s1", name: "John Doe", email: "john@example.com", selected: false },
-        { id: "s2", name: "Jane Smith", email: "jane@example.com", selected: false },
-        { id: "s3", name: "Bob Johnson", email: "bob@example.com", selected: false },
-        { id: "s4", name: "Alice Brown", email: "alice@example.com", selected: false },
-      ]
+        {
+          id: "s1",
+          name: "John Doe",
+          email: "john@example.com",
+          selected: false,
+        },
+        {
+          id: "s2",
+          name: "Jane Smith",
+          email: "jane@example.com",
+          selected: false,
+        },
+        {
+          id: "s3",
+          name: "Bob Johnson",
+          email: "bob@example.com",
+          selected: false,
+        },
+        {
+          id: "s4",
+          name: "Alice Brown",
+          email: "alice@example.com",
+          selected: false,
+        },
+      ],
     },
     {
       id: "cs202",
       name: "CS202: Data Structures",
       students: [
-        { id: "s5", name: "Mike Wilson", email: "mike@example.com", selected: false },
-        { id: "s6", name: "Sarah Lee", email: "sarah@example.com", selected: false },
-        { id: "s7", name: "Tom Davis", email: "tom@example.com", selected: false },
-      ]
+        {
+          id: "s5",
+          name: "Mike Wilson",
+          email: "mike@example.com",
+          selected: false,
+        },
+        {
+          id: "s6",
+          name: "Sarah Lee",
+          email: "sarah@example.com",
+          selected: false,
+        },
+        {
+          id: "s7",
+          name: "Tom Davis",
+          email: "tom@example.com",
+          selected: false,
+        },
+      ],
     },
   ]);
-  
-  const selectedClass = classes.find(c => c.id === formData.classId);
-  
+
+  const selectedClass = classes.find((c) => c.id === formData.classId);
+
   const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
-    
+
     // Add click handler for line locking
     editor.onMouseDown((e) => {
       // Check if click is in the line number area (gutter)
-      if (e.target.type === 2) { // Monaco editor gutter area type
+      if (e.target.type === 2) {
+        // Monaco editor gutter area type
         const lineNumber = e.target.position.lineNumber;
         handleToggleLockLine(lineNumber);
       }
     });
   };
-  
+
   const handleFormChange = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
-  
+
   const handleClassChange = (classId) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       classId,
-      selectedStudentIds: [] // Reset selected students when class changes
+      selectedStudentIds: [], // Reset selected students when class changes
     }));
   };
-  
+
   const handleToggleStudent = (studentId) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const isSelected = prev.selectedStudentIds.includes(studentId);
       return {
         ...prev,
         selectedStudentIds: isSelected
-          ? prev.selectedStudentIds.filter(id => id !== studentId)
-          : [...prev.selectedStudentIds, studentId]
+          ? prev.selectedStudentIds.filter((id) => id !== studentId)
+          : [...prev.selectedStudentIds, studentId],
       };
     });
   };
-  
+
   const handleSelectAllStudents = () => {
     if (!selectedClass) return;
-    
-    const allStudentIds = selectedClass.students.map(s => s.id);
-    const allSelected = selectedClass.students.length === formData.selectedStudentIds.length;
-    
-    setFormData(prev => ({
+
+    const allStudentIds = selectedClass.students.map((s) => s.id);
+    const allSelected =
+      selectedClass.students.length === formData.selectedStudentIds.length;
+
+    setFormData((prev) => ({
       ...prev,
-      selectedStudentIds: allSelected ? [] : allStudentIds
+      selectedStudentIds: allSelected ? [] : allStudentIds,
     }));
   };
-  
+
   const handleToggleLockLine = (lineNumber) => {
     // This function would be implemented to mark lines as locked
     // For demonstration purposes, we'll just log the action
@@ -135,36 +181,39 @@ export default function CreateAssignmentPage() {
   };
 
   const [output, setOutput] = useState("");
-const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
-const runCode = async () => {
-  const code = editorRef.current?.getValue?.();
-  if (!code || !selectedLanguage) {
-    setOutput("Please select a language and write some code.");
-    return;
-  }
+  const runCode = async () => {
+    const code = editorRef.current?.getValue?.();
+    if (!code || !selectedLanguage) {
+      setOutput("Please select a language and write some code.");
+      return;
+    }
 
-  try {
-    setIsRunning(true);
-    const result = await executeCode(selectedLanguage, code);
-    const runResult = result.run || {};
-    const finalOutput = runResult.output || runResult.stdout || runResult.stderr || "No output.";
+    try {
+      setIsRunning(true);
+      const result = await executeCode(selectedLanguage, code);
+      const runResult = result.run || {};
+      const finalOutput =
+        runResult.output ||
+        runResult.stdout ||
+        runResult.stderr ||
+        "No output.";
 
-    setOutput(finalOutput);
-
-  } catch (error) {
-    console.error(error);
-    console.error("Execution failed:", error);
-    setOutput("Execution failed.");
-  } finally {
-    setIsRunning(false);
-  }
-};
+      setOutput(finalOutput);
+    } catch (error) {
+      console.error(error);
+      console.error("Execution failed:", error);
+      setOutput("Execution failed.");
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result;
@@ -172,108 +221,104 @@ const runCode = async () => {
     };
     reader.readAsText(file);
   };
-  
+
   const triggerFileUpload = () => {
     fileInputRef.current?.click();
   };
-  
+
   const handleAddTestCase = () => {
     if (newTestCase.input && newTestCase.expectedOutput) {
       const testCase = {
         id: Date.now().toString(),
-        ...newTestCase
+        ...newTestCase,
       };
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
-        testCases: [...prev.testCases, testCase]
+        testCases: [...prev.testCases, testCase],
       }));
-      
+
       setNewTestCase({
         input: "",
         expectedOutput: "",
-        isHidden: false
+        isHidden: false,
       });
     }
   };
-  
+
   const handleRemoveTestCase = (id) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      testCases: prev.testCases.filter(tc => tc.id !== id)
+      testCases: prev.testCases.filter((tc) => tc.id !== id),
     }));
   };
-  
+
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Form submitted:", formData);
-    // update form data with the code. 
+    // update form data with the code.
     const code = editorRef.current.getValue(); // double check that thsi works
     // Here you would typically send the data to your backend
   };
-  
+
   const handlePreview = () => {
     console.log("Preview assignment:", formData);
     // Implementation for preview functionality
   };
-  
+
   const languages = [
-   { key: "python", name: "Python" },
-   { key: "java",   name: "Java"   },
-   { key: "cpp",    name: "C++"    },
-  { key: "c",      name: "C"      },
-  { key:"javascript", name: "Javascript"},
- ];
+    { key: "python", name: "Python" },
+    { key: "java", name: "Java" },
+    { key: "cpp", name: "C++" },
+    { key: "c", name: "C" },
+    { key: "javascript", name: "Javascript" },
+  ];
 
   return (
     <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
-
-      
-      
       <main className="mx-auto w-full p-4 pb-5">
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Assignment Details Card */}
-          <Card  className="bg-zinc-800/40 p-6 w-full">
+          <Card className="bg-zinc-800/40 p-6 w-full">
             <h2 className="mb-6 text-xl font-semibold">Assignment Details</h2>
             <div className="grid  gap-6 lg:grid-cols-2">
               <Input
                 isRequired
-                
                 label="Assignment Title"
                 placeholder="Enter assignment title"
                 value={formData.title}
                 variant="bordered"
                 onValueChange={(value) => handleFormChange("title", value)}
-
               />
               <div className="flex  gap-4 ">
-                <DatePicker isRequired
-                    hideTimeZone
-                    showMonthAndYearPickers
-                    label="Open Assignment at"
-                    variant="bordered"
-                  granularity="minute"
-                     value={formData.startDate}
-                    onValueChange={(value) => handleFormChange("startDate", value)}
-                      />
                 <DatePicker
-                    hideTimeZone isRequired
-                    showMonthAndYearPickers
-                    label="Close Assignment at"
-                    variant="bordered"
+                  isRequired
+                  hideTimeZone
+                  showMonthAndYearPickers
+                  label="Open Assignment at"
+                  variant="bordered"
                   granularity="minute"
-                     value={formData.dueDate}
-                    onValueChange={(value) => handleFormChange("dueDate", value)}
+                  value={formData.startDate}
+                  onValueChange={(value) =>
+                    handleFormChange("startDate", value)
+                  }
                 />
-                
+                <DatePicker
+                  hideTimeZone
+                  isRequired
+                  showMonthAndYearPickers
+                  label="Close Assignment at"
+                  variant="bordered"
+                  granularity="minute"
+                  value={formData.dueDate}
+                  onValueChange={(value) => handleFormChange("dueDate", value)}
+                />
               </div>
-              
-                
-               
-              <RichTextEditor className="md:col-span-2 bg-zinc-200 max-h-[400px]" isRequired />
-              
-              
 
+              <RichTextEditor
+                className="md:col-span-2 bg-zinc-200 max-h-[400px]"
+                isRequired
+              />
 
               <Select
                 isRequired
@@ -290,11 +335,8 @@ const runCode = async () => {
                   </SelectItem>
                 ))}
               </Select>
-              
-              
             </div>
-            
-            
+
             {/* Students */}
             {selectedClass && (
               <div className="mt-6">
@@ -306,12 +348,13 @@ const runCode = async () => {
                     variant="flat"
                     onPress={handleSelectAllStudents}
                   >
-                    {selectedClass.students.length === formData.selectedStudentIds.length
+                    {selectedClass.students.length ===
+                    formData.selectedStudentIds.length
                       ? "Unselect All"
                       : "Select All"}
                   </Button>
                 </div>
-                
+
                 <ScrollShadow className="max-h-[200px]">
                   <div className="space-y-2">
                     {selectedClass.students.map((student) => (
@@ -321,26 +364,33 @@ const runCode = async () => {
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox
-                            isSelected={formData.selectedStudentIds.includes(student.id)}
-                            onValueChange={() => handleToggleStudent(student.id)}
+                            isSelected={formData.selectedStudentIds.includes(
+                              student.id
+                            )}
+                            onValueChange={() =>
+                              handleToggleStudent(student.id)
+                            }
                           />
                           <div>
                             <div className="font-medium">{student.name}</div>
-                            <div className="text-small text-zinc-400">{student.email}</div>
+                            <div className="text-small text-zinc-400">
+                              {student.email}
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </ScrollShadow>
-                
+
                 <div className="mt-2 text-small text-zinc-400">
-                  {formData.selectedStudentIds.length} of {selectedClass.students.length} students selected
+                  {formData.selectedStudentIds.length} of{" "}
+                  {selectedClass.students.length} students selected
                 </div>
               </div>
             )}
           </Card>
-          
+
           {/* Code Template and Settings Split Screen */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Code Template Section - 60% width */}
@@ -350,19 +400,17 @@ const runCode = async () => {
                 <div className="flex items-center gap-2 w-fit">
                   <Select
                     placeholder="Select a language"
-                      className="min-w-[120px]"
-                      value={selectedLanguage}
-                      onChange={(e) => setSelectedLanguage(e.target.value)}
-                    >
-                      {languages.map((lang) => (
-                        <SelectItem key={lang.key} value={lang.key}>
-                          {lang.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
+                    className="min-w-[120px]"
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                  >
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.key} value={lang.key}>
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
 
-      
-                  
                   <Button
                     variant="flat"
                     color="primary"
@@ -384,7 +432,6 @@ const runCode = async () => {
                     {isRunning ? "Running..." : "Run"}
                   </Button>
 
-
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -394,34 +441,31 @@ const runCode = async () => {
                   />
                 </div>
               </div>
-              
+
               <p className="mb-4 text-small text-zinc-400">
                 Click on the line numbers to lock/unlock lines for students.
               </p>
-              
-              
-                  <CodeEditor
-                    language={selectedLanguage}
+
+              <CodeEditor
+                language={selectedLanguage}
                 editorRef={editorRef}
                 enabledAutocomplete={allowAutocomplete}
-                  />
-                  
-                  {output && (
-  <div className="mt-4 p-4 bg-black text-white rounded-lg">
-    <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
-    <pre className="whitespace-pre-wrap">{output}</pre>
-  </div>
-)}
-                  
-                              </Card>
-              
+              />
+
+              {output && (
+                <div className="mt-4 p-4 bg-black text-white rounded-lg">
+                  <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
+                  <pre className="whitespace-pre-wrap">{output}</pre>
+                </div>
+              )}
+            </Card>
+
             {/* Assignment Settings & Test Cases - 40% width */}
             <Card className="col-span-1 lg:col-span-2 bg-zinc-800/40 p-6">
-              <h2 className="mb-6 text-xl font-semibold">Assignment Settings</h2>
-                <Tabs
-                  color="default"
-                  variant="bordered"
-              >
+              <h2 className="mb-6 text-xl font-semibold">
+                Assignment Settings
+              </h2>
+              <Tabs color="default" variant="bordered">
                 {/* Test Cases Section */}
                 <Tab
                   key="photos"
@@ -429,10 +473,11 @@ const runCode = async () => {
                     <div className="flex items-center space-x-1">
                       <FlaskConical size={15} />
                       <span>Test Cases</span>
-                      
                     </div>
                   }
-                > <div className="space-y-6">
+                >
+                  {" "}
+                  <div className="space-y-6">
                     <h3 className="text-lg font-medium">Test Cases</h3>
                     <div className="space-y-4">
                       <div className="space-y-4">
@@ -445,7 +490,9 @@ const runCode = async () => {
                           placeholder="Test case input"
                           value={newTestCase.input}
                           variant="bordered"
-                          onValueChange={(value) => setNewTestCase({...newTestCase, input: value})}
+                          onValueChange={(value) =>
+                            setNewTestCase({ ...newTestCase, input: value })
+                          }
                         />
                         <Textarea
                           classNames={{
@@ -456,12 +503,22 @@ const runCode = async () => {
                           placeholder="Expected output"
                           value={newTestCase.expectedOutput}
                           variant="bordered"
-                          onValueChange={(value) => setNewTestCase({...newTestCase, expectedOutput: value})}
+                          onValueChange={(value) =>
+                            setNewTestCase({
+                              ...newTestCase,
+                              expectedOutput: value,
+                            })
+                          }
                         />
                         <div className="flex items-center justify-between">
                           <Checkbox
                             isSelected={newTestCase.isHidden}
-                            onValueChange={(value) => setNewTestCase({...newTestCase, isHidden: value})}
+                            onValueChange={(value) =>
+                              setNewTestCase({
+                                ...newTestCase,
+                                isHidden: value,
+                              })
+                            }
                           >
                             Hidden from students
                           </Checkbox>
@@ -471,13 +528,17 @@ const runCode = async () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <Divider className="bg-zinc-700" />
-                    
+
                     <div className="space-y-4">
-                      <h3 className="text-medium font-medium">Test Cases ({formData.testCases.length})</h3>
+                      <h3 className="text-medium font-medium">
+                        Test Cases ({formData.testCases.length})
+                      </h3>
                       {formData.testCases.length === 0 ? (
-                        <p className="text-center text-zinc-400">No test cases added yet</p>
+                        <p className="text-center text-zinc-400">
+                          No test cases added yet
+                        </p>
                       ) : (
                         <div className="space-y-3">
                           {formData.testCases.map((testCase) => (
@@ -499,20 +560,26 @@ const runCode = async () => {
                                   color="danger"
                                   size="sm"
                                   variant="light"
-                                  onPress={() => handleRemoveTestCase(testCase.id)}
+                                  onPress={() =>
+                                    handleRemoveTestCase(testCase.id)
+                                  }
                                 >
                                   {/* <Icon icon="lucide:trash-2" /> */}
                                 </Button>
                               </div>
                               <div className="space-y-2">
                                 <div>
-                                  <div className="text-small text-zinc-400">Input:</div>
+                                  <div className="text-small text-zinc-400">
+                                    Input:
+                                  </div>
                                   <div className="rounded bg-zinc-900 p-2 font-mono text-small">
                                     {testCase.input}
                                   </div>
                                 </div>
                                 <div>
-                                  <div className="text-small text-zinc-400">Expected Output:</div>
+                                  <div className="text-small text-zinc-400">
+                                    Expected Output:
+                                  </div>
                                   <div className="rounded bg-zinc-900 p-2 font-mono text-small">
                                     {testCase.expectedOutput}
                                   </div>
@@ -525,44 +592,45 @@ const runCode = async () => {
                     </div>
                   </div>
                 </Tab>
-                  
-                  <Tab
+
+                <Tab
                   key="items"
                   title={
                     <div className="flex items-center space-x-1">
-                      <MonitorCog  size={15}/>
+                      <MonitorCog size={15} />
                       <span>Settings</span>
                     </div>
                   }
                 >
-                    <div className="space-y-4">
+                  <div className="space-y-4">
                     <h3 className="text-lg font-medium">Grading Options</h3>
                     <p className="text-zinc-400">
                       Configure how this assignment will be graded.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
-                      <Checkbox defaultSelected>
-                        Auto-grade test cases
-                      </Checkbox>
-                      <Checkbox>
-                        Check for code style
-                      </Checkbox>
-                      
-                      <Tooltip className="max-w-[300px]" content={<div>
-                          {"Includes class methods & variable names"}
-                          <br/>
-                          {"(its harmless)"}
-                        </div>}>
-                        <Checkbox value={allowAutocomplete} onValueChange={(value) => setAllowAutocomplete(value)}>
-                        Disable autocomplete
+                      <Checkbox defaultSelected>Auto-grade test cases</Checkbox>
+                      <Checkbox>Check for code style</Checkbox>
+
+                      <Tooltip
+                        className="max-w-[300px]"
+                        content={
+                          <div>
+                            {"Includes class methods & variable names"}
+                            <br />
+                            {"(its harmless)"}
+                          </div>
+                        }
+                      >
+                        <Checkbox
+                          value={allowAutocomplete}
+                          onValueChange={(value) => setAllowAutocomplete(value)}
+                        >
+                          Disable autocomplete
                         </Checkbox>
-                        
                       </Tooltip>
-                      <Checkbox>
-                        Allow copy & paste
-                      </Checkbox>
+                      <Checkbox>Allow copy & paste</Checkbox>
                     </div>
-                    
+
                     <div className="space-y-4 pt-4">
                       <Input
                         classNames={{
@@ -589,33 +657,33 @@ const runCode = async () => {
                     </div>
                   </div>
                 </Tab>
-                  
-                  {/* Grading Options Section */}
-                  
+
+                {/* Grading Options Section */}
               </Tabs>
             </Card>
           </div>
-          
+
           {/* Submissions Section */}
           <Card className="bg-zinc-800/40 p-6">
             <h2 className="mb-6 text-xl font-semibold">Submissions</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <h3 className="mb-2 text-medium font-medium">Submission Options</h3>
+                  <h3 className="mb-2 text-medium font-medium">
+                    Submission Options
+                  </h3>
                   <div className="space-y-2">
                     <Checkbox defaultSelected>
                       Allow multiple submissions
                     </Checkbox>
-                    <Checkbox>
-                      Show test results immediately
-                    </Checkbox>
-                    
+                    <Checkbox>Show test results immediately</Checkbox>
                   </div>
                 </div>
-                
+
                 <div>
-                  <h3 className="mb-2 text-medium font-medium">Submission Limits</h3>
+                  <h3 className="mb-2 text-medium font-medium">
+                    Submission Limits
+                  </h3>
                   <div className="space-y-4">
                     <Input
                       classNames={{
@@ -629,25 +697,29 @@ const runCode = async () => {
                       variant="bordered"
                     />
                     <div className="mt-6 flex flex-wrap gap-4">
-              <Checkbox
-                isSelected={formData.allowPartialSubmission}
-                onValueChange={(value) => handleFormChange("allowPartialSubmission", value)}
-              >
-                Allow partial submissions
-              </Checkbox>
-              <Checkbox
-                isSelected={formData.allowLateSubmission}
-                onValueChange={(value) => handleFormChange("allowLateSubmission", value)}
-              >
-                Allow late submissions
-              </Checkbox>
-            </div>
+                      <Checkbox
+                        isSelected={formData.allowPartialSubmission}
+                        onValueChange={(value) =>
+                          handleFormChange("allowPartialSubmission", value)
+                        }
+                      >
+                        Allow partial submissions
+                      </Checkbox>
+                      <Checkbox
+                        isSelected={formData.allowLateSubmission}
+                        onValueChange={(value) =>
+                          handleFormChange("allowLateSubmission", value)
+                        }
+                      >
+                        Allow late submissions
+                      </Checkbox>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </Card>
-          
+
           <div className="flex justify-between">
             <Button
               size="lg"
@@ -657,7 +729,7 @@ const runCode = async () => {
             >
               See Preview
             </Button>
-            
+
             <div className="flex gap-2">
               <Button size="lg" variant="flat">
                 Export
