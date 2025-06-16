@@ -37,6 +37,7 @@ import { RichTextEditor } from "./RichText/rich-description";
 import { useRef } from "react";
 import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
+import { Testcase } from "./testcases";
 
 export default function CreateAssignmentPage() {
   const [formData, setFormData] = React.useState({
@@ -56,12 +57,7 @@ export default function CreateAssignmentPage() {
   const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
   const editorRef = React.useRef(null);
   const fileInputRef = React.useRef(null);
-  const [newTestCase, setNewTestCase] = React.useState({
-    input: "",
-    method: "",
-    expectedOutput: "",
-    isHidden: false,
-  });
+
   const [allowAutocomplete, setAllowAutocomplete] = React.useState(true);
   // Mock class data
   const [classes] = React.useState([
@@ -226,33 +222,6 @@ export default function CreateAssignmentPage() {
     fileInputRef.current?.click();
   };
 
-  const handleAddTestCase = () => {
-    if (newTestCase.input && newTestCase.expectedOutput) {
-      const testCase = {
-        id: Date.now().toString(),
-        ...newTestCase,
-      };
-
-      setFormData((prev) => ({
-        ...prev,
-        testCases: [...prev.testCases, testCase],
-      }));
-
-      setNewTestCase({
-        input: "",
-        expectedOutput: "",
-        isHidden: false,
-      });
-    }
-  };
-
-  const handleRemoveTestCase = (id) => {
-    setFormData((prev) => ({
-      ...prev,
-      testCases: prev.testCases.filter((tc) => tc.id !== id),
-    }));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Form submitted:", formData);
@@ -392,9 +361,9 @@ export default function CreateAssignmentPage() {
           </Card>
 
           {/* Code Template and Settings Split Screen */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
             {/* Code Template Section - 60% width */}
-            <Card className="col-span-1 lg:col-span-3 bg-zinc-800/40 p-6">
+            <Card className="col-span-1 xl:col-span-3 bg-zinc-800/40 p-6">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Code Template</h2>
                 <div className="flex items-center gap-2 w-fit">
@@ -461,7 +430,7 @@ export default function CreateAssignmentPage() {
             </Card>
 
             {/* Assignment Settings & Test Cases - 40% width */}
-            <Card className="col-span-1 lg:col-span-2 bg-zinc-800/40 p-6">
+            <Card className="col-span-1 xl:col-span-2 bg-zinc-800/40 p-6">
               <h2 className="mb-6 text-xl font-semibold">
                 Assignment Settings
               </h2>
@@ -477,120 +446,7 @@ export default function CreateAssignmentPage() {
                   }
                 >
                   {" "}
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-medium">Test Cases</h3>
-                    <div className="space-y-4">
-                      <div className="space-y-4">
-                        <Textarea
-                          classNames={{
-                            input: "bg-zinc-700",
-                            inputWrapper: "bg-zinc-700",
-                          }}
-                          label="Input"
-                          placeholder="Test case input"
-                          value={newTestCase.input}
-                          variant="bordered"
-                          onValueChange={(value) =>
-                            setNewTestCase({ ...newTestCase, input: value })
-                          }
-                        />
-                        <Textarea
-                          classNames={{
-                            input: "bg-zinc-700",
-                            inputWrapper: "bg-zinc-700",
-                          }}
-                          label="Expected Output"
-                          placeholder="Expected output"
-                          value={newTestCase.expectedOutput}
-                          variant="bordered"
-                          onValueChange={(value) =>
-                            setNewTestCase({
-                              ...newTestCase,
-                              expectedOutput: value,
-                            })
-                          }
-                        />
-                        <div className="flex items-center justify-between">
-                          <Checkbox
-                            isSelected={newTestCase.isHidden}
-                            onValueChange={(value) =>
-                              setNewTestCase({
-                                ...newTestCase,
-                                isHidden: value,
-                              })
-                            }
-                          >
-                            Hidden from students
-                          </Checkbox>
-                          <Button color="primary" onPress={handleAddTestCase}>
-                            Add Test Case
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Divider className="bg-zinc-700" />
-
-                    <div className="space-y-4">
-                      <h3 className="text-medium font-medium">
-                        Test Cases ({formData.testCases.length})
-                      </h3>
-                      {formData.testCases.length === 0 ? (
-                        <p className="text-center text-zinc-400">
-                          No test cases added yet
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          {formData.testCases.map((testCase) => (
-                            <div
-                              key={testCase.id}
-                              className="rounded-medium border border-zinc-700 bg-zinc-800 p-4"
-                            >
-                              <div className="mb-2 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">Test Case</span>
-                                  {testCase.isHidden && (
-                                    <span className="rounded-full bg-zinc-700 px-2 py-0.5 text-tiny text-zinc-300">
-                                      Hidden
-                                    </span>
-                                  )}
-                                </div>
-                                <Button
-                                  isIconOnly
-                                  color="danger"
-                                  size="sm"
-                                  variant="light"
-                                  onPress={() =>
-                                    handleRemoveTestCase(testCase.id)
-                                  }
-                                >
-                                  {/* <Icon icon="lucide:trash-2" /> */}
-                                </Button>
-                              </div>
-                              <div className="space-y-2">
-                                <div>
-                                  <div className="text-small text-zinc-400">
-                                    Input:
-                                  </div>
-                                  <div className="rounded bg-zinc-900 p-2 font-mono text-small">
-                                    {testCase.input}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-small text-zinc-400">
-                                    Expected Output:
-                                  </div>
-                                  <div className="rounded bg-zinc-900 p-2 font-mono text-small">
-                                    {testCase.expectedOutput}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <Testcase formData={formData} setFormData={setFormData} />
                 </Tab>
 
                 <Tab
