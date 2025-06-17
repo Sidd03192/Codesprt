@@ -1,4 +1,5 @@
 // ... existing imports ...
+import { supabase } from "../../supabase-client";
 
 import {
   Button,
@@ -40,6 +41,13 @@ import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
 
 export default function CreateAssignmentPage() {
+  // Placeholder for current user ID - replace with actual implementation
+  const getCurrentUserId = () => {
+    // For now, returning a hardcoded UUID.
+    // Replace this with actual logic to get the logged-in user's ID.
+    return "123e4567-e89b-12d3-a456-426614174000"; // Example UUID
+  };
+
   const [formData, setFormData] = React.useState({
     title: "",
     description: "",
@@ -57,6 +65,7 @@ export default function CreateAssignmentPage() {
   const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
   const editorRef = React.useRef(null);
   const fileInputRef = React.useRef(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
 
   const [allowAutocomplete, setAllowAutocomplete] = React.useState(true);
   // Mock class data
@@ -222,18 +231,164 @@ export default function CreateAssignmentPage() {
     fileInputRef.current?.click();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true); // Start loading
     console.log("Form submitted:", formData);
-    // update form data with the code.
-    const code = editorRef.current.getValue(); // double check that thsi works
-    // Here you would typically send the data to your backend
+
+    const code = editorRef.current.getValue();
+
+    const assignmentData = {
+      class_id: formData.classId,
+      teacher_id: getCurrentUserId(),
+      title: formData.title,
+      description: formData.description, // Assuming this holds the text content from RichTextEditor
+      language: selectedLanguage,
+      code_template: code,
+      locked_lines: [], // To be implemented
+      hints: "", // To be implemented
+      open_at: formData.startDate,
+      due_at: formData.dueDate,
+      status: "published", // Or 'draft' based on some condition
+    };
+
+    console.log("Submitting assignmentData:", assignmentData);
+
+    try {
+      const { data: assignmentResult, error: assignmentError } =
+        await supabase
+          .from("assignments")
+          .insert([assignmentData])
+          .select();
+
+      if (assignmentError) {
+        console.error("Error inserting assignment:", assignmentError);
+        alert(`Error creating assignment: ${assignmentError.message}`);
+        setIsSubmitting(false); // Stop loading
+        return;
+      }
+
+      console.log("Assignment created successfully:", assignmentResult);
+
+      if (assignmentResult && assignmentResult.length > 0) {
+        const newAssignmentId = assignmentResult[0].id;
+
+        if (formData.selectedStudentIds && formData.selectedStudentIds.length > 0) {
+          const assignmentStudentData = formData.selectedStudentIds.map(
+            (studentId) => ({
+              assignment_id: newAssignmentId,
+              student_id: studentId,
+            })
+          );
+
+          console.log("Submitting assignmentStudentData:", assignmentStudentData);
+
+          const {
+            data: studentAssignmentResult,
+            error: studentAssignmentError,
+          } = await supabase
+            .from("assignment_students")
+            .insert(assignmentStudentData);
+
+          if (studentAssignmentError) {
+            console.error(
+              "Error inserting student assignments:",
+              studentAssignmentError
+            );
+            alert(
+              `Error assigning to students: ${studentAssignmentError.message}`
+            );
+            // Note: Here, the assignment is created, but student association failed.
+            // You might want to inform the user or handle this case specifically.
+            setIsSubmitting(false); // Stop loading
+            return;
+          }
+          console.log(
+            "Student assignments created successfully:",
+            studentAssignmentResult
+          );
+        } else {
+          console.log("No students selected for this assignment.");
+        }
+        alert("Assignment created successfully!");
+      } else {
+        console.error("Assignment creation returned no result or empty result array.");
+        alert("Error creating assignment: No result returned.");
+      }
+    } catch (error) {
+      console.error("An unexpected error occurred during submission:", error);
+      alert(`An unexpected error occurred: ${error.message}`);
+    } finally {
+      setIsSubmitting(false); // Stop loading in all cases
+    }
   };
 
   const handlePreview = () => {
     console.log("Preview assignment:", formData);
     // Implementation for preview functionality
   };
+
+  // useEffect for testing handleSubmit with Supabase
+  React.useEffect(() => {
+    console.log("Test: useEffect triggered for handleSubmit simulation.");
+
+    const mockEditorRef = {
+      current: {
+        getValue: () => "// Simulated code from editor\nconsole.log('Hello test!');",
+      },
+    };
+
+    const testFormData = {
+      title: "Test Assignment from Subtask useEffect",
+      description: "This is a test description from useEffect.",
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
+      startDate: new Date().toISOString(),
+      classId: "cs101", // Valid based on existing mock data
+      selectedStudentIds: ["s1", "s2"], // Valid based on existing mock data
+      // codeTemplate is intentionally omitted here as handleSubmit gets it from editorRef
+      testCases: [{ input: "1,2", output: "3", hidden: false, points: 10 }],
+      allowPartialSubmission: true,
+      allowLateSubmission: false,
+    };
+
+    const testSelectedLanguage = "javascript";
+
+    // Simulate the event object
+    const mockEvent = { preventDefault: () => console.log("Test: event.preventDefault called") };
+
+    // Update component state for the test
+    // Note: In a real test environment, you'd mock these setters or use a testing library.
+    // For this subtask, direct state update is acceptable.
+    setFormData(prevFormData => ({ ...prevFormData, ...testFormData }));
+    setSelectedLanguage(testSelectedLanguage);
+
+    // Call handleSubmit after a short delay to simulate state updates being processed
+    const testTimeoutId = setTimeout(async () => {
+      console.log("Test: Simulating form submission with (current formData state):", formData, "and language:", selectedLanguage);
+
+      // Temporarily assign the mock ref for the duration of the call
+      const originalEditorRefCurrent = editorRef.current;
+      editorRef.current = mockEditorRef.current;
+
+      try {
+        await handleSubmit(mockEvent);
+      } catch (e) {
+        console.error("Test: Error during simulated handleSubmit:", e);
+      } finally {
+         // Restore the original ref
+        editorRef.current = originalEditorRefCurrent;
+        console.log("Test: Simulated form submission finished. editorRef restored.");
+      }
+    }, 500); // Increased delay slightly to be safer with state updates
+
+    // Cleanup timeout if component unmounts
+    return () => {
+      clearTimeout(testTimeoutId);
+      console.log("Test: useEffect cleanup. Cleared test timeout.");
+      // Optional: Restore original editorRef if it was changed and component unmounts mid-test
+      // However, the primary restoration is in the finally block of the setTimeout.
+    };
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const languages = [
     { key: "python", name: "Python" },
@@ -590,8 +745,8 @@ export default function CreateAssignmentPage() {
               <Button size="lg" variant="flat">
                 Export
               </Button>
-              <Button color="primary" size="lg" type="submit">
-                Create Assignment
+              <Button color="primary" size="lg" type="submit" isDisabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Assignment"}
               </Button>
             </div>
           </div>
