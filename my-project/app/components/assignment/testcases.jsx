@@ -177,7 +177,7 @@ export const Testcase = ({ formData, setFormData }) => {
 
         <div className="flex justify-between mt-7">
           <h3 className="text-lg font-medium">
-            Test Cases ({formData.testCases.length})
+            Test Cases ({formData.testcases.length})
           </h3>
           <div className="flex gap-3">
             <Switch
@@ -194,14 +194,14 @@ export const Testcase = ({ formData, setFormData }) => {
           </div>
         </div>
 
-        {formData.testCases.length === 0 ? (
+        {formData.testcases.length === 0 ? (
           <p className="text-center text-zinc-400">No test cases added yet</p>
         ) : showJSON ? (
           // Some div or JSX when showJSON is true
           <div className="w-full overflow-auto bg-zinc-800 rounded-lg p-4 max-h-96">
             <pre className="text-sm text-zinc-200 whitespace-pre-wrap">
               {JSON.stringify(
-                formData.testCases.map(({ id, ...rest }) => rest),
+                formData.testcases.map(({ id, ...rest }) => rest),
                 null,
                 2
               )}
@@ -209,7 +209,7 @@ export const Testcase = ({ formData, setFormData }) => {
           </div>
         ) : (
           <ScrollShadow hideScrollBar className="max-h-[200px] space-y-2">
-            {formData.testCases.map((testCase) => (
+            {formData.testcases.map((testCase) => (
               <div
                 key={testCase.id}
                 className="flex items-center justify-between rounded-medium border border-zinc-700 p-4"

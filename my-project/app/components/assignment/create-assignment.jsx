@@ -372,8 +372,7 @@ export default function CreateAssignmentPage({ session }) {
                     variant="flat"
                     onPress={handleSelectAllStudents}
                   >
-                    {selectedClass.students.length ===
-                    formData.selectedStudentIds.length
+                    {students.length === formData.selectedStudentIds.length
                       ? "Unselect All"
                       : "Select All"}
                   </Button>
