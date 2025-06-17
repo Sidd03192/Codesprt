@@ -1,5 +1,5 @@
 // ... existing imports ...
-
+"use client";
 import {
   Button,
   Card,
@@ -20,7 +20,7 @@ import {
   Form,
   Tooltip,
 } from "@heroui/react";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Code,
   WandSparkles,
@@ -39,7 +39,7 @@ import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
 
-export default function CreateAssignmentPage({ classes }) {
+export default function CreateAssignmentPage({ classes, session }) {
   const [formData, setFormData] = React.useState({
     title: "",
     description: "",
@@ -59,63 +59,99 @@ export default function CreateAssignmentPage({ classes }) {
   const fileInputRef = React.useRef(null);
 
   const [allowAutocomplete, setAllowAutocomplete] = React.useState(true);
+  const [classes, setClasses] = React.useState([]);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      const { data, error } = await supabase
+        .from("classes")
+        .select("id, name")
+        .eq("teacher_id", supabase.auth.user().id);
+      if (error) {
+        console.error("Error fetching classes:", error);
+      } else {
+        setClasses(data);
+      }
+    };
+
+    fetchClasses();
+
+    // Subscribe to real-time updates for the "classes" table
+    const subscription = supabase
+      .channel("custom-all-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "classes" },
+        (payload) => {
+          console.log("Change received!", payload);
+          fetchClasses(); // Refetch data on change
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
   // Mock class data
-  const [classes] = React.useState([
-    {
-      id: "cs101",
-      name: "CS101: Introduction to Programming",
-      students: [
-        {
-          id: "s1",
-          name: "John Doe",
-          email: "john@example.com",
-          selected: false,
-        },
-        {
-          id: "s2",
-          name: "Jane Smith",
-          email: "jane@example.com",
-          selected: false,
-        },
-        {
-          id: "s3",
-          name: "Bob Johnson",
-          email: "bob@example.com",
-          selected: false,
-        },
-        {
-          id: "s4",
-          name: "Alice Brown",
-          email: "alice@example.com",
-          selected: false,
-        },
-      ],
-    },
-    {
-      id: "cs202",
-      name: "CS202: Data Structures",
-      students: [
-        {
-          id: "s5",
-          name: "Mike Wilson",
-          email: "mike@example.com",
-          selected: false,
-        },
-        {
-          id: "s6",
-          name: "Sarah Lee",
-          email: "sarah@example.com",
-          selected: false,
-        },
-        {
-          id: "s7",
-          name: "Tom Davis",
-          email: "tom@example.com",
-          selected: false,
-        },
-      ],
-    },
-  ]);
+  // const [classes] = React.useState([
+  //   {
+  //     id: "cs101",
+  //     name: "CS101: Introduction to Programming",
+  //     students: [
+  //       {
+  //         id: "s1",
+  //         name: "John Doe",
+  //         email: "john@example.com",
+  //         selected: false,
+  //       },
+  //       {
+  //         id: "s2",
+  //         name: "Jane Smith",
+  //         email: "jane@example.com",
+  //         selected: false,
+  //       },
+  //       {
+  //         id: "s3",
+  //         name: "Bob Johnson",
+  //         email: "bob@example.com",
+  //         selected: false,
+  //       },
+  //       {
+  //         id: "s4",
+  //         name: "Alice Brown",
+  //         email: "alice@example.com",
+  //         selected: false,
+  //       },
+  //     ],
+  //   },
+  //   {
+  //     id: "cs202",
+  //     name: "CS202: Data Structures",
+  //     students: [
+  //       {
+  //         id: "s5",
+  //         name: "Mike Wilson",
+  //         email: "mike@example.com",
+  //         selected: false,
+  //       },
+  //       {
+  //         id: "s6",
+  //         name: "Sarah Lee",
+  //         email: "sarah@example.com",
+  //         selected: false,
+  //       },
+  //       {
+  //         id: "s7",
+  //         name: "Tom Davis",
+  //         email: "tom@example.com",
+  //         selected: false,
+  //       },
+  //     ],
+  //   },
+  // ]);
 
   const selectedClass = classes.find((c) => c.id === formData.classId);
 
@@ -221,9 +257,9 @@ export default function CreateAssignmentPage({ classes }) {
     console.log("Form submitted:", formData);
     // update form data with the code.
     const code = editorRef.current.getValue(); // double check that thsi works
+    console.log(code);
     // Here you would typically send the data to your backend
     formData.code = code;
-    formData.classId;
   };
 
   const handlePreview = () => {
