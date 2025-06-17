@@ -1,5 +1,5 @@
 // Toolbar.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Tooltip,
@@ -7,42 +7,47 @@ import {
   PopoverTrigger,
   PopoverContent,
   Input,
-} from '@heroui/react';
-import {Dropdown, DropdownMenu, DropdownTrigger, DropdownItem} from "@heroui/react";
-import {WandSparkles } from 'lucide-react';
-import { Icon } from '@iconify/react';
+} from "@heroui/react";
+import {
+  Dropdown,
+  DropdownMenu,
+  DropdownTrigger,
+  DropdownItem,
+} from "@heroui/react";
+import { WandSparkles } from "lucide-react";
+import { Icon } from "@iconify/react";
 
 export const Toolbar = ({ editor }) => {
-  const [linkUrl, setLinkUrl] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  // Dummy state 
+  const [linkUrl, setLinkUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  // Dummy state
   const [_, setRender] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const enhanceWithAI = async () => {
     if (!editor) return;
     const userInput = editor.getText();
-    const res = await fetch('/api/enhance-description', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/enhance-description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: userInput }),
     });
 
     const { html } = await res.json();
 
-    editor.commands.setContent(html, 'html'); 
+    editor.commands.setContent(html, "html");
   };
 
   useEffect(() => {
-    if (editor) {  // sid ahh fix... need to look into this and make more efficient. 
+    if (editor) {
+      // sid ahh fix... need to look into this and make more efficient.
       const forceUpdate = () => setRender((n) => n + 1);
-      editor.on('transaction', forceUpdate);
-      editor.on('selectionUpdate', forceUpdate);
+      editor.on("transaction", forceUpdate);
+      editor.on("selectionUpdate", forceUpdate);
       return () => {
-        editor.off('transaction', forceUpdate);
-        editor.off('selectionUpdate', forceUpdate);
+        editor.off("transaction", forceUpdate);
+        editor.off("selectionUpdate", forceUpdate);
       };
     }
-    
   }, [editor]);
 
   if (!editor) {
@@ -50,17 +55,22 @@ export const Toolbar = ({ editor }) => {
   }
   const addLink = () => {
     if (linkUrl) {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
-      setLinkUrl('');
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: linkUrl })
+        .run();
+      setLinkUrl("");
     } else {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
     }
   };
 
   const addImage = () => {
     if (imageUrl) {
       editor.chain().focus().setImage({ src: imageUrl }).run();
-      setImageUrl('');
+      setImageUrl("");
     }
   };
 
@@ -68,14 +78,17 @@ export const Toolbar = ({ editor }) => {
     <div className="flex flex-wrap items-center gap-0.5 p-2 bg-content1">
       {/* Heading 1 */}
 
-      
-        <Tooltip content="Heading 1" placement="top">
+      <Tooltip content="Heading 1" placement="top">
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('heading', { level: 1 }) ? 'solid' : 'light'}
-          color={editor.isActive('heading', { level: 1 }) ? 'primary' : 'default'}
-          onPress={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          variant={editor.isActive("heading", { level: 1 }) ? "solid" : "light"}
+          color={
+            editor.isActive("heading", { level: 1 }) ? "primary" : "default"
+          }
+          onPress={() =>
+            editor.chain().focus().toggleHeading({ level: 1 }).run()
+          }
           aria-label="Heading 1"
         >
           <Icon icon="lucide:heading-1" className="text-lg" />
@@ -87,9 +100,13 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('heading', { level: 2 }) ? 'solid' : 'light'}
-          color={editor.isActive('heading', { level: 2 }) ? 'primary' : 'default'}
-          onPress={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          variant={editor.isActive("heading", { level: 2 }) ? "solid" : "light"}
+          color={
+            editor.isActive("heading", { level: 2 }) ? "primary" : "default"
+          }
+          onPress={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
           aria-label="Heading 2"
         >
           <Icon icon="lucide:heading-2" className="text-lg" />
@@ -100,9 +117,13 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('heading', { level: 3 }) ? 'solid' : 'light'}
-          color={editor.isActive('heading', { level: 3 }) ? 'primary' : 'default'}
-          onPress={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          variant={editor.isActive("heading", { level: 3 }) ? "solid" : "light"}
+          color={
+            editor.isActive("heading", { level: 3 }) ? "primary" : "default"
+          }
+          onPress={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
           aria-label="Heading 2"
         >
           <Icon icon="lucide:heading-2" className="text-lg" />
@@ -115,23 +136,22 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('bold') ? 'solid' : 'light'}
-          color={editor.isActive('bold') ? 'primary' : 'default'}
+          variant={editor.isActive("bold") ? "solid" : "light"}
+          color={editor.isActive("bold") ? "primary" : "default"}
           onPress={() => editor.chain().focus().toggleBold().run()}
           aria-label="Bold"
         >
           <Icon icon="lucide:bold" className="text-lg" />
         </Button>
       </Tooltip>
-      
 
       {/* Italic */}
       <Tooltip content="Italic" placement="top">
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('italic') ? 'solid' : 'light'}
-          color={editor.isActive('italic') ? 'primary' : 'default'}
+          variant={editor.isActive("italic") ? "solid" : "light"}
+          color={editor.isActive("italic") ? "primary" : "default"}
           onPress={() => editor.chain().focus().toggleItalic().run()}
           aria-label="Italic"
         >
@@ -144,8 +164,8 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('underline') ? 'solid' : 'light'}
-          color={editor.isActive('underline') ? 'primary' : 'default'}
+          variant={editor.isActive("underline") ? "solid" : "light"}
+          color={editor.isActive("underline") ? "primary" : "default"}
           onPress={() => editor.chain().focus().toggleUnderline().run()}
           aria-label="Underline"
         >
@@ -158,8 +178,8 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('superscript') ? 'solid' : 'light'}
-          color={editor.isActive('superscript') ? 'primary' : 'default'}
+          variant={editor.isActive("superscript") ? "solid" : "light"}
+          color={editor.isActive("superscript") ? "primary" : "default"}
           onPress={() => editor.chain().focus().toggleSuperscript().run()}
           aria-label="Superscript"
         >
@@ -175,8 +195,8 @@ export const Toolbar = ({ editor }) => {
           <Button
             isIconOnly
             size="sm"
-            variant={editor.isActive('link') ? 'solid' : 'light'}
-            color={editor.isActive('link') ? 'primary' : 'default'}
+            variant={editor.isActive("link") ? "solid" : "light"}
+            color={editor.isActive("link") ? "primary" : "default"}
             aria-label="Link"
           >
             <Icon icon="lucide:link" className="text-lg" />
@@ -192,20 +212,19 @@ export const Toolbar = ({ editor }) => {
               onValueChange={setLinkUrl}
             />
             <Button size="sm" color="primary" onPress={addLink}>
-              {editor.isActive('link') ? 'Update Link' : 'Add Link'}
+              {editor.isActive("link") ? "Update Link" : "Add Link"}
             </Button>
           </div>
         </PopoverContent>
       </Popover>
-
 
       {/* Bullet List */}
       <Tooltip content="Bullet List" placement="top">
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('bulletList') ? 'solid' : 'light'}
-          color={editor.isActive('bulletList') ? 'primary' : 'default'}
+          variant={editor.isActive("bulletList") ? "solid" : "light"}
+          color={editor.isActive("bulletList") ? "primary" : "default"}
           onPress={() => editor.chain().focus().toggleBulletList().run()}
           aria-label="Bullet List"
         >
@@ -219,8 +238,8 @@ export const Toolbar = ({ editor }) => {
         <Button
           isIconOnly
           size="sm"
-          variant={editor.isActive('codeBlock') ? 'solid' : 'light'}
-          color={editor.isActive('codeBlock') ? 'primary' : 'default'}
+          variant={editor.isActive("codeBlock") ? "solid" : "light"}
+          color={editor.isActive("codeBlock") ? "primary" : "default"}
           onPress={() => editor.chain().focus().toggleCodeBlock().run()}
           aria-label="Code Block"
         >
@@ -249,24 +268,26 @@ export const Toolbar = ({ editor }) => {
             </Button>
           </div>
         </PopoverContent>
-        
       </Popover>
-            <div className="h-6 w-[.5px] bg-divider mx-1"></div>
+      <div className="h-6 w-[.5px] bg-divider mx-1"></div>
 
-        <Tooltip content="Enhance with AI (Beta)" placement="top" >
+      <Tooltip content="Enhance with AI (Beta)" placement="top">
         <Button
           isIconOnly
           size="sm"
-          onPress = {enhanceWithAI}
-          variant={editor.isActive('codeBlock') ? 'solid' : 'light'}
-          color={editor.isActive('codeBlock') ? 'primary' : 'default'}
+          onPress={enhanceWithAI}
+          variant={editor.isActive("codeBlock") ? "solid" : "light"}
+          color={editor.isActive("codeBlock") ? "primary" : "default"}
           aria-label="Code Block"
-          className='shadow-lg'
+          className="shadow-lg"
         >
-          <Icon icon="lucide:wand-sparkles" className="text-lg" color='#8b5cf6' />
+          <Icon
+            icon="lucide:wand-sparkles"
+            className="text-lg"
+            color="#8b5cf6"
+          />
         </Button>
       </Tooltip>
-
     </div>
   );
 };

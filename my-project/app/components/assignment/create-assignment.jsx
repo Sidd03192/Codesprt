@@ -1,4 +1,5 @@
 // ... existing imports ...
+import { supabase } from "../../supabase-client";
 
 import {
   Button,
@@ -19,152 +20,147 @@ import {
   DatePicker,
   Form,
   Tooltip,
-  
+  form,
+  Spinner,
 } from "@heroui/react";
-import React from "react";
-import { Code , WandSparkles, LassoSelect,Upload, ArrowUpFromLine,FlaskConical ,FileSliders,MonitorCog   } from "lucide-react";
-import { useState} from "react";
+import React, { useEffect } from "react";
+import {
+  Code,
+  WandSparkles,
+  LassoSelect,
+  Upload,
+  ArrowUpFromLine,
+  FlaskConical,
+  FileSliders,
+  MonitorCog,
+} from "lucide-react";
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { RichTextEditor } from "./RichText/rich-description";
 import { useRef } from "react";
 import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
-
-export default function CreateAssignmentPage() {
+import { Testcase } from "./testcases";
+import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
+export default function CreateAssignmentPage({ session }) {
   const [formData, setFormData] = React.useState({
+    classId: "",
     title: "",
     description: "",
+
+    selectedStudentIds: [],
+    codeTemplate:
+      "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
     dueDate: null,
     startDate: null,
-    classId: "",
-    selectedStudentIds: [],
-    codeTemplate: "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
-    testCases: [],
-    allowPartialSubmission: false,
+    testcases: [],
+    lockedLines: [],
+    hiddenLines: [],
     allowLateSubmission: false,
+    autoGrade: false,
+    allowAutocomplete: false,
+    showResults: false,
+    allowCopyPaste: false,
+    checkStyle: false,
   });
-  
+
   const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
   const editorRef = React.useRef(null);
   const fileInputRef = React.useRef(null);
-  const [newTestCase, setNewTestCase] = React.useState({
-    input: "",
-    method: "",
-    expectedOutput: "",
-    isHidden: false,
-  });
-  const [allowAutocomplete, setAllowAutocomplete] = React.useState(true);
-  // Mock class data
-  const [classes] = React.useState([
-    {
-      id: "cs101",
-      name: "CS101: Introduction to Programming",
-      students: [
-        { id: "s1", name: "John Doe", email: "john@example.com", selected: false },
-        { id: "s2", name: "Jane Smith", email: "jane@example.com", selected: false },
-        { id: "s3", name: "Bob Johnson", email: "bob@example.com", selected: false },
-        { id: "s4", name: "Alice Brown", email: "alice@example.com", selected: false },
-      ]
-    },
-    {
-      id: "cs202",
-      name: "CS202: Data Structures",
-      students: [
-        { id: "s5", name: "Mike Wilson", email: "mike@example.com", selected: false },
-        { id: "s6", name: "Sarah Lee", email: "sarah@example.com", selected: false },
-        { id: "s7", name: "Tom Davis", email: "tom@example.com", selected: false },
-      ]
-    },
-  ]);
-  
-  const selectedClass = classes.find(c => c.id === formData.classId);
-  
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-    
-    // Add click handler for line locking
-    editor.onMouseDown((e) => {
-      // Check if click is in the line number area (gutter)
-      if (e.target.type === 2) { // Monaco editor gutter area type
-        const lineNumber = e.target.position.lineNumber;
-        handleToggleLockLine(lineNumber);
-      }
-    });
+  const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
+
+  const [classes, setClasses] = React.useState([]);
+  const [students, setStudents] = useState([]);
+  // load classes from database on page load
+  useEffect(() => {
+    const fetchClasses = async () => {
+      const classes = await getClasses({ teacher_id: session.user.id });
+      setClasses(classes);
+    };
+    fetchClasses();
+  }, [session]);
+
+  useEffect(() => {
+    if (formData.classId) {
+      fetchStudentsForClass(formData.classId);
+    } else {
+      setStudents([]);
+    }
+  }, [formData.classId]);
+
+  const selectedClass = classes.find((c) => c.id === formData.classId);
+
+  const handleClassChange = (classId) => {
+    // updates class Id
+    setFormData((prev) => ({
+      ...prev,
+      classId,
+      selectedStudentIds: [],
+    }));
   };
-  
   const handleFormChange = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
-  
-  const handleClassChange = (classId) => {
-    setFormData(prev => ({
-      ...prev,
-      classId,
-      selectedStudentIds: [] // Reset selected students when class changes
-    }));
-  };
-  
+
   const handleToggleStudent = (studentId) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const isSelected = prev.selectedStudentIds.includes(studentId);
       return {
         ...prev,
         selectedStudentIds: isSelected
-          ? prev.selectedStudentIds.filter(id => id !== studentId)
-          : [...prev.selectedStudentIds, studentId]
+          ? prev.selectedStudentIds.filter((id) => id !== studentId)
+          : [...prev.selectedStudentIds, studentId],
       };
     });
   };
-  
+
   const handleSelectAllStudents = () => {
     if (!selectedClass) return;
-    
-    const allStudentIds = selectedClass.students.map(s => s.id);
-    const allSelected = selectedClass.students.length === formData.selectedStudentIds.length;
-    
-    setFormData(prev => ({
+
+    const allStudentIds = selectedClass.students.map((s) => s.id);
+    const allSelected =
+      selectedClass.students.length === formData.selectedStudentIds.length;
+
+    setFormData((prev) => ({
       ...prev,
-      selectedStudentIds: allSelected ? [] : allStudentIds
+      selectedStudentIds: allSelected ? [] : allStudentIds,
     }));
-  };
-  
-  const handleToggleLockLine = (lineNumber) => {
-    // This function would be implemented to mark lines as locked
-    // For demonstration purposes, we'll just log the action
-    console.log(`Toggled lock on line ${lineNumber}`);
   };
 
   const [output, setOutput] = useState("");
-const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
-const runCode = async () => {
-  const code = editorRef.current?.getValue?.();
-  if (!code || !selectedLanguage) {
-    setOutput("Please select a language and write some code.");
-    return;
-  }
+  const runCode = async () => {
+    const code = editorRef.current?.getValue?.();
+    if (!code || !selectedLanguage) {
+      setOutput("Please select a language and write some code.");
+      return;
+    }
 
-  try {
-    setIsRunning(true);
-    const result = await executeCode(selectedLanguage, code);
-    const runResult = result.run || {};
-    const finalOutput = runResult.output || runResult.stdout || runResult.stderr || "No output.";
+    try {
+      setIsRunning(true);
+      const result = await executeCode(selectedLanguage, code);
+      const runResult = result.run || {};
+      const finalOutput =
+        runResult.output ||
+        runResult.stdout ||
+        runResult.stderr ||
+        "No output.";
 
-    setOutput(finalOutput);
-
-  } catch (error) {
-    console.error(error);
-    console.error("Execution failed:", error);
-    setOutput("Execution failed.");
-  } finally {
-    setIsRunning(false);
-  }
-};
+      setOutput(finalOutput);
+    } catch (error) {
+      console.error(error);
+      console.error("Execution failed:", error);
+      setOutput("Execution failed.");
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result;
@@ -172,108 +168,177 @@ const runCode = async () => {
     };
     reader.readAsText(file);
   };
-  
+
   const triggerFileUpload = () => {
     fileInputRef.current?.click();
   };
-  
-  const handleAddTestCase = () => {
-    if (newTestCase.input && newTestCase.expectedOutput) {
-      const testCase = {
-        id: Date.now().toString(),
-        ...newTestCase
-      };
-      
-      setFormData(prev => ({
-        ...prev,
-        testCases: [...prev.testCases, testCase]
-      }));
-      
-      setNewTestCase({
-        input: "",
-        expectedOutput: "",
-        isHidden: false
-      });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true); // Start loading
+    console.log("Form submitted:", formData);
+
+    const code = editorRef.current.getValue();
+
+    const assignmentData = {
+      class_id: formData.classId, // need to update thsi
+      teacher_id: formData.teacherId,
+      title: formData.title,
+      description: formData.description, // Assuming this holds the text content from RichTextEditor
+      language: selectedLanguage,
+      code_template: code,
+      hints: "", // To be implemented
+      open_at: formData.startDate,
+      due_at: formData.dueDate,
+      created_at: new Date().toISOString(),
+      status: "inactive",
+      testcases: formData.testcases,
+      locked_lines: formData.lockedLines,
+      hidden_lines: formData.hiddenLines,
+      allow_late_submission: formData.allowLateSubmission,
+      allow_copy_paste: formData.allowCopyPaste,
+      allow_auto_complete: formData.allowAutocomplete,
+      auto_grade: formData.autoGrade,
+      show_results: formData.showResults,
+      check_style: formData.checkStyle,
+    };
+
+    console.log("Submitting assignmentData to the database:", assignmentData);
+
+    try {
+      const { data: assignmentResult, error: assignmentError } = await supabase
+        .from("assignments")
+        .insert([assignmentData])
+        .select();
+
+      if (assignmentError) {
+        console.error("Error inserting assignment:", assignmentError);
+        alert(`Error creating assignment: ${assignmentError.message}`);
+        setIsSubmitting(false); // Stop loading
+        return;
+      }
+
+      console.log("Assignment created successfully:", assignmentResult);
+
+      if (assignmentResult && assignmentResult.length > 0) {
+        const newAssignmentId = assignmentResult[0].id;
+
+        if (
+          formData.selectedStudentIds &&
+          formData.selectedStudentIds.length > 0
+        ) {
+          const assignmentStudentData = formData.selectedStudentIds.map(
+            (studentId) => ({
+              assignment_id: newAssignmentId,
+              student_id: studentId,
+            })
+          );
+
+          console.log(
+            "Submitting assignmentStudentData:",
+            assignmentStudentData
+          );
+
+          const {
+            data: studentAssignmentResult,
+            error: studentAssignmentError,
+          } = await supabase
+            .from("assignment_students")
+            .insert(assignmentStudentData);
+
+          if (studentAssignmentError) {
+            console.error(
+              "Error inserting student assignments:",
+              studentAssignmentError
+            );
+            alert(
+              `Error assigning to students: ${studentAssignmentError.message}`
+            );
+            // Note: Here, the assignment is created, but student association failed.
+            // You might want to inform the user or handle this case specifically.
+            setIsSubmitting(false); // Stop loading
+            return;
+          }
+          console.log(
+            "Student assignments created successfully:",
+            studentAssignmentResult
+          );
+        } else {
+          console.log("No students selected for this assignment.");
+        }
+        alert("Assignment created successfully!");
+      } else {
+        console.error(
+          "Assignment creation returned no result or empty result array."
+        );
+        alert("Error creating assignment: No result returned.");
+      }
+    } catch (error) {
+      console.error("An unexpected error occurred during submission:", error);
+      alert(`An unexpected error occurred: ${error.message}`);
+    } finally {
+      setIsSubmitting(false); // Stop loading in all cases
     }
   };
-  
-  const handleRemoveTestCase = (id) => {
-    setFormData(prev => ({
-      ...prev,
-      testCases: prev.testCases.filter(tc => tc.id !== id)
-    }));
-  };
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-    // update form data with the code. 
-    const code = editorRef.current.getValue(); // double check that thsi works
-    // Here you would typically send the data to your backend
-  };
-  
+
   const handlePreview = () => {
     console.log("Preview assignment:", formData);
     // Implementation for preview functionality
   };
-  
+
   const languages = [
-   { key: "python", name: "Python" },
-   { key: "java",   name: "Java"   },
-   { key: "cpp",    name: "C++"    },
-  { key: "c",      name: "C"      },
-  { key:"javascript", name: "Javascript"},
- ];
+    { key: "python", name: "Python" },
+    { key: "java", name: "Java" },
+    { key: "cpp", name: "C++" },
+    { key: "c", name: "C" },
+    { key: "javascript", name: "Javascript" },
+  ];
 
   return (
     <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
-
-      
-      
       <main className="mx-auto w-full p-4 pb-5">
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Assignment Details Card */}
-          <Card  className="bg-zinc-800/40 p-6 w-full">
+          <Card className="bg-zinc-800/40 p-6 w-full">
             <h2 className="mb-6 text-xl font-semibold">Assignment Details</h2>
             <div className="grid  gap-6 lg:grid-cols-2">
               <Input
                 isRequired
-                
                 label="Assignment Title"
                 placeholder="Enter assignment title"
                 value={formData.title}
                 variant="bordered"
                 onValueChange={(value) => handleFormChange("title", value)}
-
               />
               <div className="flex  gap-4 ">
-                <DatePicker isRequired
-                    hideTimeZone
-                    showMonthAndYearPickers
-                    label="Open Assignment at"
-                    variant="bordered"
-                  granularity="minute"
-                     value={formData.startDate}
-                    onValueChange={(value) => handleFormChange("startDate", value)}
-                      />
                 <DatePicker
-                    hideTimeZone isRequired
-                    showMonthAndYearPickers
-                    label="Close Assignment at"
-                    variant="bordered"
+                  isRequired
+                  hideTimeZone
+                  showMonthAndYearPickers
+                  label="Open Assignment at"
+                  variant="bordered"
                   granularity="minute"
-                     value={formData.dueDate}
-                    onValueChange={(value) => handleFormChange("dueDate", value)}
+                  value={formData.startDate}
+                  onValueChange={(value) =>
+                    handleFormChange("startDate", value)
+                  }
                 />
-                
+                <DatePicker
+                  hideTimeZone
+                  isRequired
+                  showMonthAndYearPickers
+                  label="Close Assignment at"
+                  variant="bordered"
+                  granularity="minute"
+                  value={formData.dueDate}
+                  onValueChange={(value) => handleFormChange("dueDate", value)}
+                />
               </div>
-              
-                
-               
-              <RichTextEditor className="md:col-span-2 bg-zinc-200 max-h-[400px]" isRequired />
-              
-              
 
+              <RichTextEditor
+                className="md:col-span-2 bg-zinc-200 max-h-[400px]"
+                isRequired
+              />
 
               <Select
                 isRequired
@@ -284,19 +349,20 @@ const runCode = async () => {
                 selectedKeys={formData.classId ? [formData.classId] : []}
                 onChange={(e) => handleClassChange(e.target.value)}
               >
-                {classes.map((classInfo) => (
-                  <SelectItem key={classInfo.id} value={classInfo.id}>
-                    {classInfo.name}
-                  </SelectItem>
-                ))}
+                {classes ? (
+                  classes.map((classInfo) => (
+                    <SelectItem key={classInfo.id} value={classInfo.id}>
+                      {classInfo.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div>No classes found</div>
+                )}
               </Select>
-              
-              
             </div>
-            
-            
+
             {/* Students */}
-            {selectedClass && (
+            {students && (
               <div className="mt-6">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-medium font-medium">Students</h3>
@@ -306,63 +372,71 @@ const runCode = async () => {
                     variant="flat"
                     onPress={handleSelectAllStudents}
                   >
-                    {selectedClass.students.length === formData.selectedStudentIds.length
+                    {selectedClass.students.length ===
+                    formData.selectedStudentIds.length
                       ? "Unselect All"
                       : "Select All"}
                   </Button>
                 </div>
-                
+
                 <ScrollShadow className="max-h-[200px]">
                   <div className="space-y-2">
-                    {selectedClass.students.map((student) => (
+                    {students.map((student) => (
                       <div
                         key={student.id}
                         className="flex items-center justify-between rounded-medium border border-zinc-700 p-3"
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox
-                            isSelected={formData.selectedStudentIds.includes(student.id)}
-                            onValueChange={() => handleToggleStudent(student.id)}
+                            isSelected={formData.selectedStudentIds.includes(
+                              student.id
+                            )}
+                            onValueChange={() =>
+                              handleToggleStudent(student.id)
+                            }
                           />
                           <div>
                             <div className="font-medium">{student.name}</div>
-                            <div className="text-small text-zinc-400">{student.email}</div>
+                            <div className="text-small text-zinc-400">
+                              {student.email}
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </ScrollShadow>
-                
+
                 <div className="mt-2 text-small text-zinc-400">
-                  {formData.selectedStudentIds.length} of {selectedClass.students.length} students selected
+                  {/* Number of selected students of total (total is second) */}
+                  {formData.selectedStudentIds.length} of {students.length}{" "}
+                  students selected
                 </div>
               </div>
             )}
           </Card>
-          
+
           {/* Code Template and Settings Split Screen */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
             {/* Code Template Section - 60% width */}
-            <Card className="col-span-1 lg:col-span-3 bg-zinc-800/40 p-6">
+            <Card className="col-span-1 xl:col-span-3 bg-zinc-800/40 p-6">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Code Template</h2>
                 <div className="flex items-center gap-2 w-fit">
                   <Select
                     placeholder="Select a language"
-                      className="min-w-[120px]"
-                      value={selectedLanguage}
-                      onChange={(e) => setSelectedLanguage(e.target.value)}
-                    >
-                      {languages.map((lang) => (
-                        <SelectItem key={lang.key} value={lang.key}>
-                          {lang.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
+                    className="min-w-[120px]"
+                    value={selectedLanguage}
+                    isRequired={true}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                  >
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.key} value={lang.key}>
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
 
-      
-                  
                   <Button
                     variant="flat"
                     color="primary"
@@ -384,7 +458,6 @@ const runCode = async () => {
                     {isRunning ? "Running..." : "Run"}
                   </Button>
 
-
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -394,34 +467,32 @@ const runCode = async () => {
                   />
                 </div>
               </div>
-              
+
               <p className="mb-4 text-small text-zinc-400">
                 Click on the line numbers to lock/unlock lines for students.
               </p>
-              
-              
-                  <CodeEditor
-                    language={selectedLanguage}
+
+              <CodeEditor
+                language={selectedLanguage}
                 editorRef={editorRef}
-                enabledAutocomplete={allowAutocomplete}
-                  />
-                  
-                  {output && (
-  <div className="mt-4 p-4 bg-black text-white rounded-lg">
-    <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
-    <pre className="whitespace-pre-wrap">{output}</pre>
-  </div>
-)}
-                  
-                              </Card>
-              
+                formData={formData}
+                setFormData={setFormData}
+              />
+
+              {output && (
+                <div className="mt-4 p-4 bg-black text-white rounded-lg">
+                  <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
+                  <pre className="whitespace-pre-wrap">{output}</pre>
+                </div>
+              )}
+            </Card>
+
             {/* Assignment Settings & Test Cases - 40% width */}
-            <Card className="col-span-1 lg:col-span-2 bg-zinc-800/40 p-6">
-              <h2 className="mb-6 text-xl font-semibold">Assignment Settings</h2>
-                <Tabs
-                  color="default"
-                  variant="bordered"
-              >
+            <Card className="col-span-1 xl:col-span-2 bg-zinc-800/40 p-6">
+              <h2 className="mb-6 text-xl font-semibold">
+                Assignment Settings
+              </h2>
+              <Tabs color="default" variant="bordered">
                 {/* Test Cases Section */}
                 <Tab
                   key="photos"
@@ -429,140 +500,83 @@ const runCode = async () => {
                     <div className="flex items-center space-x-1">
                       <FlaskConical size={15} />
                       <span>Test Cases</span>
-                      
                     </div>
                   }
-                > <div className="space-y-6">
-                    <h3 className="text-lg font-medium">Test Cases</h3>
-                    <div className="space-y-4">
-                      <div className="space-y-4">
-                        <Textarea
-                          classNames={{
-                            input: "bg-zinc-700",
-                            inputWrapper: "bg-zinc-700",
-                          }}
-                          label="Input"
-                          placeholder="Test case input"
-                          value={newTestCase.input}
-                          variant="bordered"
-                          onValueChange={(value) => setNewTestCase({...newTestCase, input: value})}
-                        />
-                        <Textarea
-                          classNames={{
-                            input: "bg-zinc-700",
-                            inputWrapper: "bg-zinc-700",
-                          }}
-                          label="Expected Output"
-                          placeholder="Expected output"
-                          value={newTestCase.expectedOutput}
-                          variant="bordered"
-                          onValueChange={(value) => setNewTestCase({...newTestCase, expectedOutput: value})}
-                        />
-                        <div className="flex items-center justify-between">
-                          <Checkbox
-                            isSelected={newTestCase.isHidden}
-                            onValueChange={(value) => setNewTestCase({...newTestCase, isHidden: value})}
-                          >
-                            Hidden from students
-                          </Checkbox>
-                          <Button color="primary" onPress={handleAddTestCase}>
-                            Add Test Case
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Divider className="bg-zinc-700" />
-                    
-                    <div className="space-y-4">
-                      <h3 className="text-medium font-medium">Test Cases ({formData.testCases.length})</h3>
-                      {formData.testCases.length === 0 ? (
-                        <p className="text-center text-zinc-400">No test cases added yet</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {formData.testCases.map((testCase) => (
-                            <div
-                              key={testCase.id}
-                              className="rounded-medium border border-zinc-700 bg-zinc-800 p-4"
-                            >
-                              <div className="mb-2 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">Test Case</span>
-                                  {testCase.isHidden && (
-                                    <span className="rounded-full bg-zinc-700 px-2 py-0.5 text-tiny text-zinc-300">
-                                      Hidden
-                                    </span>
-                                  )}
-                                </div>
-                                <Button
-                                  isIconOnly
-                                  color="danger"
-                                  size="sm"
-                                  variant="light"
-                                  onPress={() => handleRemoveTestCase(testCase.id)}
-                                >
-                                  {/* <Icon icon="lucide:trash-2" /> */}
-                                </Button>
-                              </div>
-                              <div className="space-y-2">
-                                <div>
-                                  <div className="text-small text-zinc-400">Input:</div>
-                                  <div className="rounded bg-zinc-900 p-2 font-mono text-small">
-                                    {testCase.input}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-small text-zinc-400">Expected Output:</div>
-                                  <div className="rounded bg-zinc-900 p-2 font-mono text-small">
-                                    {testCase.expectedOutput}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                >
+                  {" "}
+                  <Testcase formData={formData} setFormData={setFormData} />
                 </Tab>
-                  
-                  <Tab
+
+                <Tab
                   key="items"
                   title={
                     <div className="flex items-center space-x-1">
-                      <MonitorCog  size={15}/>
+                      <MonitorCog size={15} />
                       <span>Settings</span>
                     </div>
                   }
                 >
-                    <div className="space-y-4">
+                  <div className="space-y-4">
                     <h3 className="text-lg font-medium">Grading Options</h3>
                     <p className="text-zinc-400">
                       Configure how this assignment will be graded.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
-                      <Checkbox defaultSelected>
+                      <Checkbox
+                        value={formData.autoGrade}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, autoGrade: value }))
+                        }
+                      >
                         Auto-grade test cases
                       </Checkbox>
-                      <Checkbox>
+                      <Checkbox
+                        value={formData.checkStyle}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            checkStyle: value,
+                          }))
+                        }
+                      >
                         Check for code style
                       </Checkbox>
-                      
-                      <Tooltip className="max-w-[300px]" content={<div>
-                          {"Includes class methods & variable names"}
-                          <br/>
-                          {"(its harmless)"}
-                        </div>}>
-                        <Checkbox value={allowAutocomplete} onValueChange={(value) => setAllowAutocomplete(value)}>
-                        Disable autocomplete
+
+                      <Tooltip
+                        className="max-w-[300px]"
+                        content={
+                          <div>
+                            {"Includes class methods & variable names"}
+                            <br />
+                            {"(its harmless)"}
+                          </div>
+                        }
+                      >
+                        <Checkbox
+                          value={formData.allowAutocomplete}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              allowAutocomplete: value,
+                            }))
+                          }
+                        >
+                          Disable autocomplete
                         </Checkbox>
-                        
                       </Tooltip>
-                      <Checkbox>
+                      <Checkbox
+                        value={formData.allowCopyPaste}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            allowCopyPaste: value,
+                          }))
+                        }
+                      >
                         Allow copy & paste
                       </Checkbox>
                     </div>
-                    
+
                     <div className="space-y-4 pt-4">
                       <Input
                         classNames={{
@@ -589,33 +603,30 @@ const runCode = async () => {
                     </div>
                   </div>
                 </Tab>
-                  
-                  {/* Grading Options Section */}
-                  
+
+                {/* Grading Options Section */}
               </Tabs>
             </Card>
           </div>
-          
+
           {/* Submissions Section */}
           <Card className="bg-zinc-800/40 p-6">
             <h2 className="mb-6 text-xl font-semibold">Submissions</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <h3 className="mb-2 text-medium font-medium">Submission Options</h3>
+                  <h3 className="mb-2 text-medium font-medium">
+                    Submission Options
+                  </h3>
                   <div className="space-y-2">
-                    <Checkbox defaultSelected>
-                      Allow multiple submissions
-                    </Checkbox>
-                    <Checkbox>
-                      Show test results immediately
-                    </Checkbox>
-                    
+                    <Checkbox>Show test results immediately</Checkbox>
                   </div>
                 </div>
-                
+
                 <div>
-                  <h3 className="mb-2 text-medium font-medium">Submission Limits</h3>
+                  <h3 className="mb-2 text-medium font-medium">
+                    Submission Limits
+                  </h3>
                   <div className="space-y-4">
                     <Input
                       classNames={{
@@ -629,25 +640,34 @@ const runCode = async () => {
                       variant="bordered"
                     />
                     <div className="mt-6 flex flex-wrap gap-4">
-              <Checkbox
-                isSelected={formData.allowPartialSubmission}
-                onValueChange={(value) => handleFormChange("allowPartialSubmission", value)}
-              >
-                Allow partial submissions
-              </Checkbox>
-              <Checkbox
-                isSelected={formData.allowLateSubmission}
-                onValueChange={(value) => handleFormChange("allowLateSubmission", value)}
-              >
-                Allow late submissions
-              </Checkbox>
-            </div>
+                      <Checkbox
+                        isSelected={formData.allowLateSubmission}
+                        onValueChange={(value) =>
+                          handleFormChange("allowLateSubmission", value)
+                        }
+                      >
+                        Allow late submissions
+                      </Checkbox>
+                      <Tooltip content="Displays testcases results to students immediately after submission">
+                        <Checkbox
+                          value={formData.showResults}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              showResults: value,
+                            }))
+                          }
+                        >
+                          Show results immediately
+                        </Checkbox>
+                      </Tooltip>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </Card>
-          
+
           <div className="flex justify-between">
             <Button
               size="lg"
@@ -657,13 +677,20 @@ const runCode = async () => {
             >
               See Preview
             </Button>
-            
+
             <div className="flex gap-2">
               <Button size="lg" variant="flat">
                 Export
               </Button>
-              <Button color="primary" size="lg" type="submit">
-                Create Assignment
+              <Button
+                color="primary"
+                size="lg"
+                type="submit"
+                isDisabled={isSubmitting}
+                isLoading={isSubmitting}
+                spinner={<Spinner />}
+              >
+                {isSubmitting ? "Creating..." : "Create Assignment"}
               </Button>
             </div>
           </div>
