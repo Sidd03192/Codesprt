@@ -2,7 +2,15 @@
 import { insertUserIfNew } from "./api";
 
 import React from "react";
-import { Drawer, DrawerContent, DrawerHeader, DrawerBody, Button, useDisclosure, Avatar } from "@heroui/react";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerBody,
+  Button,
+  useDisclosure,
+  Avatar,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Sidebar } from "../components/sidebar";
 import { supabase } from "../supabase-client";
@@ -17,44 +25,40 @@ import { StudentAssignments } from "./pages/student/assignments";
 import { StudentGrades } from "./pages/student/grades";
 import { StudentCourses } from "./pages/student/courses";
 export default function Dashboard() {
-    const [userType, setUserType] = React.useState("teacher"); // "teacher" or "student"
+  const [userType, setUserType] = React.useState("teacher"); // "teacher" or "student"
 
-  
   // update user data if new user
-const [session, setSession] = useState(null);
-    const fetchSession = async () => {
-        const currentSession = await supabase.auth.getSession();
-        console.log(currentSession);
-        setSession(currentSession.data.session);
+  const [session, setSession] = useState(null);
+  const fetchSession = async () => {
+    const currentSession = await supabase.auth.getSession();
+    console.log(currentSession);
+    setSession(currentSession.data.session);
   };
-    // console.log("Current session:", currentSession);
-      console.log(session)
+  // console.log("Current session:", currentSession);
+  useEffect(() => {
+    fetchSession();
 
-    useEffect(() => {
-      fetchSession();
-      
-      const {data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-        console.log('Auth state changed:', event, session);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("Auth state changed:", event, session);
         setSession(session);
-      })
-      if (!session) {
-        console.log("No session found, redirecting to login...");
-        // window.location.href = "/authentication"; // Redirect to login page if no session
       }
-      return () => {
-        authListener.subscription.unsubscribe();  // need to unsubscribe to avoid memory leaks
-      };
-    }, []);
-
+    );
+    if (!session) {
+      console.log("No session found, redirecting to login...");
+      // window.location.href = "/authentication"; // Redirect to login page if no session
+    }
+    return () => {
+      authListener.subscription.unsubscribe(); // need to unsubscribe to avoid memory leaks
+    };
+  }, []);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  
+
   // Add active page state
   const [activePage, setActivePage] = React.useState("overview");
   useEffect(() => {
-    
-
     insertUserIfNew();
   }, []);
   // For mobile view
@@ -87,28 +91,38 @@ const [session, setSession] = useState(null);
       setIsSidebarCollapsed(!isSidebarCollapsed);
     }
   };
-  
+
   // Render the active page component
   const renderActivePage = () => {
     if (userType === "teacher") {
       switch (activePage) {
-        case "overview": return <Overview />;
-        case "assignments": return <Assignments />;
-        case "gradebook": return <Gradebook />;
-        case "classroom": return <Classroom />;
-        default: return <Overview />;
+        case "overview":
+          return <Overview />;
+        case "assignments":
+          return <Assignments />;
+        case "gradebook":
+          return <Gradebook />;
+        case "classroom":
+          return <Classroom session={session} />;
+        default:
+          return <Overview />;
       }
     } else {
       switch (activePage) {
-        case "overview": return <StudentOverview />;
-        case "assignments": return <StudentAssignments />;
-        case "grades": return <StudentGrades />;
-        case "courses": return <StudentCourses />;
-        default: return <StudentOverview />;
+        case "overview":
+          return <StudentOverview />;
+        case "assignments":
+          return <StudentAssignments />;
+        case "grades":
+          return <StudentGrades />;
+        case "courses":
+          return <StudentCourses />;
+        default:
+          return <StudentOverview />;
       }
     }
   };
-  
+
   // Handle page change
   const handlePageChange = (page) => {
     console.log("Changing page to:", page);
@@ -124,10 +138,11 @@ const [session, setSession] = useState(null);
             isSidebarCollapsed ? "w-16" : "w-64"
           } border-r border-divider bg-content1`}
         >
-          <Sidebar 
-            isCollapsed={isSidebarCollapsed} 
+          <Sidebar
+            isCollapsed={isSidebarCollapsed}
             activePage={activePage}
             setActivePage={handlePageChange}
+            session={session}
           />
         </div>
       )}
@@ -142,7 +157,10 @@ const [session, setSession] = useState(null);
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="rounded-full bg-content3 p-1">
-                        <Icon icon="lucide:book-open" className="text-foreground" />
+                        <Icon
+                          icon="lucide:book-open"
+                          className="text-foreground"
+                        />
                       </div>
                       <span className="font-semibold"> Code Sprout</span>
                     </div>
@@ -152,8 +170,8 @@ const [session, setSession] = useState(null);
                   </div>
                 </DrawerHeader>
                 <DrawerBody className="p-0">
-                  <Sidebar 
-                    isCollapsed={false} 
+                  <Sidebar
+                    isCollapsed={false}
                     activePage={activePage}
                     setActivePage={(page) => {
                       handlePageChange(page);
@@ -173,43 +191,43 @@ const [session, setSession] = useState(null);
         <header className="flex h-12 items-center  border-b  bg-content1 justify-between  border-divider px-1">
           <div className="flex ">
             <Button
-            isIconOnly
-            variant="light"
-            onPress={toggleSidebar}
-            className="mr-2"
-          >
-            <Icon
-              icon={isSidebarCollapsed ? "lucide:menu" : "lucide:panel-left-close"}
-              className="text-lg"
-            />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Icon 
-              icon={
-                activePage === "overview" ? "lucide:layout-dashboard" :
-                activePage === "assignments" ? "lucide:file-text" :
-                activePage === "gradebook" ? "lucide:bar-chart-2" :
-                "lucide:users"
-              } 
-              className="text-lg" 
-            />
-            <h1 className="text-lg font-medium capitalize">{activePage}</h1>
-            <div>
-              
+              isIconOnly
+              variant="light"
+              onPress={toggleSidebar}
+              className="mr-2"
+            >
+              <Icon
+                icon={
+                  isSidebarCollapsed ? "lucide:menu" : "lucide:panel-left-close"
+                }
+                className="text-lg"
+              />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Icon
+                icon={
+                  activePage === "overview"
+                    ? "lucide:layout-dashboard"
+                    : activePage === "assignments"
+                    ? "lucide:file-text"
+                    : activePage === "gradebook"
+                    ? "lucide:bar-chart-2"
+                    : "lucide:users"
+                }
+                className="text-lg"
+              />
+              <h1 className="text-lg font-medium capitalize">{activePage}</h1>
+              <div></div>
             </div>
-          </div>
           </div>
           <Avatar
             src="https://img.heroui.chat/image/avatar?w=40&h=40&u=teacher1"
             className="h-8 w-8"
           />
-          
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4">
-          {renderActivePage()}
-        </main>
+        <main className="flex-1 overflow-auto p-4">{renderActivePage()}</main>
       </div>
     </div>
   );

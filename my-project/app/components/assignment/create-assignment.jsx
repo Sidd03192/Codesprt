@@ -39,7 +39,7 @@ import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
 
-export default function CreateAssignmentPage() {
+export default function CreateAssignmentPage({ classes }) {
   const [formData, setFormData] = React.useState({
     title: "",
     description: "",
@@ -170,12 +170,6 @@ export default function CreateAssignmentPage() {
     }));
   };
 
-  const handleToggleLockLine = (lineNumber) => {
-    // This function would be implemented to mark lines as locked
-    // For demonstration purposes, we'll just log the action
-    console.log(`Toggled lock on line ${lineNumber}`);
-  };
-
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
 
@@ -228,6 +222,8 @@ export default function CreateAssignmentPage() {
     // update form data with the code.
     const code = editorRef.current.getValue(); // double check that thsi works
     // Here you would typically send the data to your backend
+    formData.code = code;
+    formData.classId;
   };
 
   const handlePreview = () => {
