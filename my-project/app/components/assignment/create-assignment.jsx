@@ -1,5 +1,6 @@
 // ... existing imports ...
-"use client";
+import { supabase } from "../../supabase-client";
+
 import {
   Button,
   Card,
@@ -19,6 +20,8 @@ import {
   DatePicker,
   Form,
   Tooltip,
+  form,
+  Spinner,
 } from "@heroui/react";
 import React, { useEffect } from "react";
 import {
@@ -38,147 +41,65 @@ import { useRef } from "react";
 import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
-
-export default function CreateAssignmentPage({ classes, session }) {
+import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
+export default function CreateAssignmentPage({ session }) {
   const [formData, setFormData] = React.useState({
+    classId: "",
     title: "",
     description: "",
-    dueDate: null,
-    startDate: null,
-    classId: "",
+
     selectedStudentIds: [],
     codeTemplate:
       "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
-    testCases: [],
-    allowPartialSubmission: false,
+    dueDate: null,
+    startDate: null,
+    testcases: [],
+    lockedLines: [],
+    hiddenLines: [],
     allowLateSubmission: false,
+    autoGrade: false,
+    allowAutocomplete: false,
+    showResults: false,
+    allowCopyPaste: false,
+    checkStyle: false,
   });
 
   const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
   const editorRef = React.useRef(null);
   const fileInputRef = React.useRef(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
 
-  const [allowAutocomplete, setAllowAutocomplete] = React.useState(true);
   const [classes, setClasses] = React.useState([]);
-
+  const [students, setStudents] = useState([]);
+  // load classes from database on page load
   useEffect(() => {
     const fetchClasses = async () => {
-      const { data, error } = await supabase
-        .from("classes")
-        .select("id, name")
-        .eq("teacher_id", supabase.auth.user().id);
-      if (error) {
-        console.error("Error fetching classes:", error);
-      } else {
-        setClasses(data);
-      }
+      const classes = await getClasses({ teacher_id: session.user.id });
+      setClasses(classes);
     };
-
     fetchClasses();
+  }, [session]);
 
-    // Subscribe to real-time updates for the "classes" table
-    const subscription = supabase
-      .channel("custom-all-channel")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "classes" },
-        (payload) => {
-          console.log("Change received!", payload);
-          fetchClasses(); // Refetch data on change
-        }
-      )
-      .subscribe();
-
-    // Cleanup subscription on component unmount
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []);
-
-  // Mock class data
-  // const [classes] = React.useState([
-  //   {
-  //     id: "cs101",
-  //     name: "CS101: Introduction to Programming",
-  //     students: [
-  //       {
-  //         id: "s1",
-  //         name: "John Doe",
-  //         email: "john@example.com",
-  //         selected: false,
-  //       },
-  //       {
-  //         id: "s2",
-  //         name: "Jane Smith",
-  //         email: "jane@example.com",
-  //         selected: false,
-  //       },
-  //       {
-  //         id: "s3",
-  //         name: "Bob Johnson",
-  //         email: "bob@example.com",
-  //         selected: false,
-  //       },
-  //       {
-  //         id: "s4",
-  //         name: "Alice Brown",
-  //         email: "alice@example.com",
-  //         selected: false,
-  //       },
-  //     ],
-  //   },
-  //   {
-  //     id: "cs202",
-  //     name: "CS202: Data Structures",
-  //     students: [
-  //       {
-  //         id: "s5",
-  //         name: "Mike Wilson",
-  //         email: "mike@example.com",
-  //         selected: false,
-  //       },
-  //       {
-  //         id: "s6",
-  //         name: "Sarah Lee",
-  //         email: "sarah@example.com",
-  //         selected: false,
-  //       },
-  //       {
-  //         id: "s7",
-  //         name: "Tom Davis",
-  //         email: "tom@example.com",
-  //         selected: false,
-  //       },
-  //     ],
-  //   },
-  // ]);
+  useEffect(() => {
+    if (formData.classId) {
+      fetchStudentsForClass(formData.classId);
+    } else {
+      setStudents([]);
+    }
+  }, [formData.classId]);
 
   const selectedClass = classes.find((c) => c.id === formData.classId);
 
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-
-    // Add click handler for line locking
-    editor.onMouseDown((e) => {
-      // Check if click is in the line number area (gutter)
-      if (e.target.type === 2) {
-        // Monaco editor gutter area type
-        const lineNumber = e.target.position.lineNumber;
-        handleToggleLockLine(lineNumber);
-      }
-    });
-  };
-
-  const handleFormChange = (key, value) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-  };
-
   const handleClassChange = (classId) => {
+    // updates class Id
     setFormData((prev) => ({
       ...prev,
       classId,
-      selectedStudentIds: [], // Reset selected students when class changes
+      selectedStudentIds: [],
     }));
+  };
+  const handleFormChange = (key, value) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleToggleStudent = (studentId) => {
@@ -252,14 +173,112 @@ export default function CreateAssignmentPage({ classes, session }) {
     fileInputRef.current?.click();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true); // Start loading
     console.log("Form submitted:", formData);
-    // update form data with the code.
-    const code = editorRef.current.getValue(); // double check that thsi works
-    console.log(code);
-    // Here you would typically send the data to your backend
-    formData.code = code;
+
+    const code = editorRef.current.getValue();
+
+    const assignmentData = {
+      class_id: formData.classId, // need to update thsi
+      teacher_id: formData.teacherId,
+      title: formData.title,
+      description: formData.description, // Assuming this holds the text content from RichTextEditor
+      language: selectedLanguage,
+      code_template: code,
+      hints: "", // To be implemented
+      open_at: formData.startDate,
+      due_at: formData.dueDate,
+      created_at: new Date().toISOString(),
+      status: "inactive",
+      testcases: formData.testcases,
+      locked_lines: formData.lockedLines,
+      hidden_lines: formData.hiddenLines,
+      allow_late_submission: formData.allowLateSubmission,
+      allow_copy_paste: formData.allowCopyPaste,
+      allow_auto_complete: formData.allowAutocomplete,
+      auto_grade: formData.autoGrade,
+      show_results: formData.showResults,
+      check_style: formData.checkStyle,
+    };
+
+    console.log("Submitting assignmentData to the database:", assignmentData);
+
+    try {
+      const { data: assignmentResult, error: assignmentError } = await supabase
+        .from("assignments")
+        .insert([assignmentData])
+        .select();
+
+      if (assignmentError) {
+        console.error("Error inserting assignment:", assignmentError);
+        alert(`Error creating assignment: ${assignmentError.message}`);
+        setIsSubmitting(false); // Stop loading
+        return;
+      }
+
+      console.log("Assignment created successfully:", assignmentResult);
+
+      if (assignmentResult && assignmentResult.length > 0) {
+        const newAssignmentId = assignmentResult[0].id;
+
+        if (
+          formData.selectedStudentIds &&
+          formData.selectedStudentIds.length > 0
+        ) {
+          const assignmentStudentData = formData.selectedStudentIds.map(
+            (studentId) => ({
+              assignment_id: newAssignmentId,
+              student_id: studentId,
+            })
+          );
+
+          console.log(
+            "Submitting assignmentStudentData:",
+            assignmentStudentData
+          );
+
+          const {
+            data: studentAssignmentResult,
+            error: studentAssignmentError,
+          } = await supabase
+            .from("assignment_students")
+            .insert(assignmentStudentData);
+
+          if (studentAssignmentError) {
+            console.error(
+              "Error inserting student assignments:",
+              studentAssignmentError
+            );
+            alert(
+              `Error assigning to students: ${studentAssignmentError.message}`
+            );
+            // Note: Here, the assignment is created, but student association failed.
+            // You might want to inform the user or handle this case specifically.
+            setIsSubmitting(false); // Stop loading
+            return;
+          }
+          console.log(
+            "Student assignments created successfully:",
+            studentAssignmentResult
+          );
+        } else {
+          console.log("No students selected for this assignment.");
+        }
+        alert("Assignment created successfully!");
+      } else {
+        console.error(
+          "Assignment creation returned no result or empty result array."
+        );
+        alert("Error creating assignment: No result returned.");
+      }
+    } catch (error) {
+      console.error("An unexpected error occurred during submission:", error);
+      alert(`An unexpected error occurred: ${error.message}`);
+    } finally {
+      setIsSubmitting(false); // Stop loading in all cases
+    }
   };
 
   const handlePreview = () => {
@@ -330,16 +349,20 @@ export default function CreateAssignmentPage({ classes, session }) {
                 selectedKeys={formData.classId ? [formData.classId] : []}
                 onChange={(e) => handleClassChange(e.target.value)}
               >
-                {classes.map((classInfo) => (
-                  <SelectItem key={classInfo.id} value={classInfo.id}>
-                    {classInfo.name}
-                  </SelectItem>
-                ))}
+                {classes ? (
+                  classes.map((classInfo) => (
+                    <SelectItem key={classInfo.id} value={classInfo.id}>
+                      {classInfo.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div>No classes found</div>
+                )}
               </Select>
             </div>
 
             {/* Students */}
-            {selectedClass && (
+            {students && (
               <div className="mt-6">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-medium font-medium">Students</h3>
@@ -358,7 +381,7 @@ export default function CreateAssignmentPage({ classes, session }) {
 
                 <ScrollShadow className="max-h-[200px]">
                   <div className="space-y-2">
-                    {selectedClass.students.map((student) => (
+                    {students.map((student) => (
                       <div
                         key={student.id}
                         className="flex items-center justify-between rounded-medium border border-zinc-700 p-3"
@@ -385,8 +408,9 @@ export default function CreateAssignmentPage({ classes, session }) {
                 </ScrollShadow>
 
                 <div className="mt-2 text-small text-zinc-400">
-                  {formData.selectedStudentIds.length} of{" "}
-                  {selectedClass.students.length} students selected
+                  {/* Number of selected students of total (total is second) */}
+                  {formData.selectedStudentIds.length} of {students.length}{" "}
+                  students selected
                 </div>
               </div>
             )}
@@ -403,6 +427,7 @@ export default function CreateAssignmentPage({ classes, session }) {
                     placeholder="Select a language"
                     className="min-w-[120px]"
                     value={selectedLanguage}
+                    isRequired={true}
                     onChange={(e) => setSelectedLanguage(e.target.value)}
                   >
                     {languages.map((lang) => (
@@ -450,7 +475,8 @@ export default function CreateAssignmentPage({ classes, session }) {
               <CodeEditor
                 language={selectedLanguage}
                 editorRef={editorRef}
-                enabledAutocomplete={allowAutocomplete}
+                formData={formData}
+                setFormData={setFormData}
               />
 
               {output && (
@@ -496,8 +522,25 @@ export default function CreateAssignmentPage({ classes, session }) {
                       Configure how this assignment will be graded.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
-                      <Checkbox defaultSelected>Auto-grade test cases</Checkbox>
-                      <Checkbox>Check for code style</Checkbox>
+                      <Checkbox
+                        value={formData.autoGrade}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, autoGrade: value }))
+                        }
+                      >
+                        Auto-grade test cases
+                      </Checkbox>
+                      <Checkbox
+                        value={formData.checkStyle}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            checkStyle: value,
+                          }))
+                        }
+                      >
+                        Check for code style
+                      </Checkbox>
 
                       <Tooltip
                         className="max-w-[300px]"
@@ -510,13 +553,28 @@ export default function CreateAssignmentPage({ classes, session }) {
                         }
                       >
                         <Checkbox
-                          value={allowAutocomplete}
-                          onValueChange={(value) => setAllowAutocomplete(value)}
+                          value={formData.allowAutocomplete}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              allowAutocomplete: value,
+                            }))
+                          }
                         >
                           Disable autocomplete
                         </Checkbox>
                       </Tooltip>
-                      <Checkbox>Allow copy & paste</Checkbox>
+                      <Checkbox
+                        value={formData.allowCopyPaste}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            allowCopyPaste: value,
+                          }))
+                        }
+                      >
+                        Allow copy & paste
+                      </Checkbox>
                     </div>
 
                     <div className="space-y-4 pt-4">
@@ -561,9 +619,6 @@ export default function CreateAssignmentPage({ classes, session }) {
                     Submission Options
                   </h3>
                   <div className="space-y-2">
-                    <Checkbox defaultSelected>
-                      Allow multiple submissions
-                    </Checkbox>
                     <Checkbox>Show test results immediately</Checkbox>
                   </div>
                 </div>
@@ -586,14 +641,6 @@ export default function CreateAssignmentPage({ classes, session }) {
                     />
                     <div className="mt-6 flex flex-wrap gap-4">
                       <Checkbox
-                        isSelected={formData.allowPartialSubmission}
-                        onValueChange={(value) =>
-                          handleFormChange("allowPartialSubmission", value)
-                        }
-                      >
-                        Allow partial submissions
-                      </Checkbox>
-                      <Checkbox
                         isSelected={formData.allowLateSubmission}
                         onValueChange={(value) =>
                           handleFormChange("allowLateSubmission", value)
@@ -601,6 +648,19 @@ export default function CreateAssignmentPage({ classes, session }) {
                       >
                         Allow late submissions
                       </Checkbox>
+                      <Tooltip content="Displays testcases results to students immediately after submission">
+                        <Checkbox
+                          value={formData.showResults}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              showResults: value,
+                            }))
+                          }
+                        >
+                          Show results immediately
+                        </Checkbox>
+                      </Tooltip>
                     </div>
                   </div>
                 </div>
@@ -622,8 +682,15 @@ export default function CreateAssignmentPage({ classes, session }) {
               <Button size="lg" variant="flat">
                 Export
               </Button>
-              <Button color="primary" size="lg" type="submit">
-                Create Assignment
+              <Button
+                color="primary"
+                size="lg"
+                type="submit"
+                isDisabled={isSubmitting}
+                isLoading={isSubmitting}
+                spinner={<Spinner />}
+              >
+                {isSubmitting ? "Creating..." : "Create Assignment"}
               </Button>
             </div>
           </div>

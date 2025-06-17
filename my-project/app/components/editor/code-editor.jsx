@@ -13,18 +13,25 @@ import { PenOff, Eye } from "lucide-react";
 export default function CodeEditor({
   language,
   editorRef,
-  enabledAutocomplete,
+  formData,
+  setFormData,
 }) {
   const monacoRef = useRef(null);
   const monaco = useMonaco();
   const editor = editorRef.current;
   const [val, setVal] = useState("");
-  const [lockedLines, setLockedLines] = useState([]);
-  const [hiddenLines, setHiddenLines] = useState([]);
   const [checkedLines, setCheckedLines] = useState(new Set());
-  const [eyeLines, setEyeLines] = useState(new Set()); // New state for eye icons
+  const [eyeLines, setEyeLines] = useState(new Set());
   const [decorIds, setDecorIds] = useState([]);
   const [hoveredLine, setHoveredLine] = useState(null); // Track hovered line
+
+  useEffect(() => {
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      lockedLines: checkedLines,
+      hiddenLines: eyeLines,
+    }));
+  }, [checkedLines, eyeLines]);
 
   function handleEditorMount(editor, monaco) {
     editorRef.current = editor;

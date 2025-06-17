@@ -99,7 +99,7 @@ export default function Dashboard() {
         case "overview":
           return <Overview />;
         case "assignments":
-          return <Assignments />;
+          return <Assignments session={session} />;
         case "gradebook":
           return <Gradebook />;
         case "classroom":
