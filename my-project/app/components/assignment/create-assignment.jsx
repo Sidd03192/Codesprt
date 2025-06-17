@@ -42,7 +42,7 @@ import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
 import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
-export default function CreateAssignmentPage({ session }) {
+export default function CreateAssignmentPage({ session, classes }) {
   const [formData, setFormData] = React.useState({
     classId: "",
     title: "",
@@ -68,27 +68,28 @@ export default function CreateAssignmentPage({ session }) {
   const editorRef = React.useRef(null);
   const fileInputRef = React.useRef(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
-
-  const [classes, setClasses] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(false);
   const [students, setStudents] = useState([]);
-  // load classes from database on page load
-  useEffect(() => {
-    const fetchClasses = async () => {
-      const classes = await getClasses({ teacher_id: session.user.id });
-      setClasses(classes);
-    };
-    fetchClasses();
-  }, [session]);
+  const [assignmentTitle, setAssignmentTitle] = useState("");
 
   useEffect(() => {
-    if (formData.classId) {
-      fetchStudentsForClass(formData.classId);
-    } else {
-      setStudents([]);
-    }
+    const fetchStudents = async () => {
+      if (formData.classId) {
+        setIsLoading(true);
+
+        const fetchedStudents = await fetchStudentsForClass(formData.classId);
+        console.log("students for class:", fetchedStudents);
+        setStudents(fetchedStudents);
+      } else {
+        setStudents([]);
+      }
+      setIsLoading(false);
+    };
+
+    fetchStudents();
   }, [formData.classId]);
 
-  const selectedClass = classes.find((c) => c.id === formData.classId);
+  const selectedClass = classes?.find((c) => c.id === formData.classId) || null;
 
   const handleClassChange = (classId) => {
     // updates class Id
@@ -115,11 +116,9 @@ export default function CreateAssignmentPage({ session }) {
   };
 
   const handleSelectAllStudents = () => {
-    if (!selectedClass) return;
-
-    const allStudentIds = selectedClass.students.map((s) => s.id);
-    const allSelected =
-      selectedClass.students.length === formData.selectedStudentIds.length;
+    const allStudentIds = students.map((s) => s.student_id);
+    console.log("all student ids:", allStudentIds);
+    const allSelected = students.length === formData.selectedStudentIds.length;
 
     setFormData((prev) => ({
       ...prev,
@@ -205,80 +204,80 @@ export default function CreateAssignmentPage({ session }) {
 
     console.log("Submitting assignmentData to the database:", assignmentData);
 
-    try {
-      const { data: assignmentResult, error: assignmentError } = await supabase
-        .from("assignments")
-        .insert([assignmentData])
-        .select();
+    // try {
+    //   const { data: assignmentResult, error: assignmentError } = await supabase
+    //     .from("assignments")
+    //     .insert([assignmentData])
+    //     .select();
 
-      if (assignmentError) {
-        console.error("Error inserting assignment:", assignmentError);
-        alert(`Error creating assignment: ${assignmentError.message}`);
-        setIsSubmitting(false); // Stop loading
-        return;
-      }
+    //   if (assignmentError) {
+    //     console.error("Error inserting assignment:", assignmentError);
+    //     alert(`Error creating assignment: ${assignmentError.message}`);
+    //     setIsSubmitting(false); // Stop loading
+    //     return;
+    //   }
 
-      console.log("Assignment created successfully:", assignmentResult);
+    //   console.log("Assignment created successfully:", assignmentResult);
 
-      if (assignmentResult && assignmentResult.length > 0) {
-        const newAssignmentId = assignmentResult[0].id;
+    //   if (assignmentResult && assignmentResult.length > 0) {
+    //     const newAssignmentId = assignmentResult[0].id;
 
-        if (
-          formData.selectedStudentIds &&
-          formData.selectedStudentIds.length > 0
-        ) {
-          const assignmentStudentData = formData.selectedStudentIds.map(
-            (studentId) => ({
-              assignment_id: newAssignmentId,
-              student_id: studentId,
-            })
-          );
+    //     if (
+    //       formData.selectedStudentIds &&
+    //       formData.selectedStudentIds.length > 0
+    //     ) {
+    //       const assignmentStudentData = formData.selectedStudentIds.map(
+    //         (studentId) => ({
+    //           assignment_id: newAssignmentId,
+    //           student_id: studentId,
+    //         })
+    //       );
 
-          console.log(
-            "Submitting assignmentStudentData:",
-            assignmentStudentData
-          );
+    //       console.log(
+    //         "Submitting assignmentStudentData:",
+    //         assignmentStudentData
+    //       );
 
-          const {
-            data: studentAssignmentResult,
-            error: studentAssignmentError,
-          } = await supabase
-            .from("assignment_students")
-            .insert(assignmentStudentData);
+    //       const {
+    //         data: studentAssignmentResult,
+    //         error: studentAssignmentError,
+    //       } = await supabase
+    //         .from("assignment_students")
+    //         .insert(assignmentStudentData);
 
-          if (studentAssignmentError) {
-            console.error(
-              "Error inserting student assignments:",
-              studentAssignmentError
-            );
-            alert(
-              `Error assigning to students: ${studentAssignmentError.message}`
-            );
-            // Note: Here, the assignment is created, but student association failed.
-            // You might want to inform the user or handle this case specifically.
-            setIsSubmitting(false); // Stop loading
-            return;
-          }
-          console.log(
-            "Student assignments created successfully:",
-            studentAssignmentResult
-          );
-        } else {
-          console.log("No students selected for this assignment.");
-        }
-        alert("Assignment created successfully!");
-      } else {
-        console.error(
-          "Assignment creation returned no result or empty result array."
-        );
-        alert("Error creating assignment: No result returned.");
-      }
-    } catch (error) {
-      console.error("An unexpected error occurred during submission:", error);
-      alert(`An unexpected error occurred: ${error.message}`);
-    } finally {
-      setIsSubmitting(false); // Stop loading in all cases
-    }
+    //       if (studentAssignmentError) {
+    //         console.error(
+    //           "Error inserting student assignments:",
+    //           studentAssignmentError
+    //         );
+    //         alert(
+    //           `Error assigning to students: ${studentAssignmentError.message}`
+    //         );
+    //         // Note: Here, the assignment is created, but student association failed.
+    //         // You might want to inform the user or handle this case specifically.
+    //         setIsSubmitting(false); // Stop loading
+    //         return;
+    //       }
+    //       console.log(
+    //         "Student assignments created successfully:",
+    //         studentAssignmentResult
+    //       );
+    //     } else {
+    //       console.log("No students selected for this assignment.");
+    //     }
+    //     alert("Assignment created successfully!");
+    //   } else {
+    //     console.error(
+    //       "Assignment creation returned no result or empty result array."
+    //     );
+    //     alert("Error creating assignment: No result returned.");
+    //   }
+    // } catch (error) {
+    //   console.error("An unexpected error occurred during submission:", error);
+    //   alert(`An unexpected error occurred: ${error.message}`);
+    // } finally {
+    //   setIsSubmitting(false); // Stop loading in all cases
+    // }
   };
 
   const handlePreview = () => {
@@ -349,68 +348,85 @@ export default function CreateAssignmentPage({ session }) {
                 selectedKeys={formData.classId ? [formData.classId] : []}
                 onChange={(e) => handleClassChange(e.target.value)}
               >
-                {classes ? (
+                {classes &&
+                  classes.length > 0 &&
                   classes.map((classInfo) => (
                     <SelectItem key={classInfo.id} value={classInfo.id}>
                       {classInfo.name}
                     </SelectItem>
-                  ))
-                ) : (
-                  <div>No classes found</div>
-                )}
+                  ))}
               </Select>
             </div>
 
             {/* Students */}
-            {students && (
+
+            {students && formData.classId && (
               <div className="mt-6">
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-medium font-medium">Students</h3>
-                  <Button
-                    className="mb-3"
-                    color="primary"
-                    variant="flat"
-                    onPress={handleSelectAllStudents}
-                  >
-                    {students.length === formData.selectedStudentIds.length
-                      ? "Unselect All"
-                      : "Select All"}
-                  </Button>
-                </div>
-
-                <ScrollShadow className="max-h-[200px]">
-                  <div className="space-y-2">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex items-center justify-between rounded-medium border border-zinc-700 p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            isSelected={formData.selectedStudentIds.includes(
-                              student.id
-                            )}
-                            onValueChange={() =>
-                              handleToggleStudent(student.id)
-                            }
-                          />
-                          <div>
-                            <div className="font-medium">{student.name}</div>
-                            <div className="text-small text-zinc-400">
-                              {student.email}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                {isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <Spinner />
                   </div>
-                </ScrollShadow>
+                ) : (
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-medium font-medium">Students</h3>
+                      <Button
+                        className="mb-3"
+                        color="primary"
+                        variant="flat"
+                        onPress={handleSelectAllStudents}
+                      >
+                        {students.length === formData.selectedStudentIds.length
+                          ? "Unselect All"
+                          : "Select All"}
+                      </Button>
+                    </div>
+                    <ScrollShadow className="max-h-[200px]">
+                      <div className="space-y-2">
+                        {students && students.length > 0 ? (
+                          students.map((student) => (
+                            <div
+                              key={student.student_id}
+                              className="flex items-center justify-between rounded-medium border border-zinc-700 p-3"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  isSelected={formData.selectedStudentIds.includes(
+                                    student.student_id
+                                  )}
+                                  onValueChange={() =>
+                                    handleToggleStudent(student.student_id)
+                                  }
+                                />
+                                <div>
+                                  <div className="font-medium">
+                                    {student.full_name}
+                                  </div>
+                                  <div className="text-small text-zinc-400">
+                                    {student.student_email || "No email"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-small text-red-400 w-full flex justify-center">
+                            This class has no students. Please add students in
+                            the classroom page.
+                          </div>
+                        )}
+                      </div>
+                    </ScrollShadow>
 
-                <div className="mt-2 text-small text-zinc-400">
-                  {/* Number of selected students of total (total is second) */}
-                  {formData.selectedStudentIds.length} of {students.length}{" "}
-                  students selected
-                </div>
+                    {classes.length === 0 && (
+                      <div className="mt-2 text-small text-zinc-400">
+                        {/* Number of selected students of total (total is second) */}
+                        {formData.selectedStudentIds.length} of{" "}
+                        {students.length || "0"} selected
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </Card>

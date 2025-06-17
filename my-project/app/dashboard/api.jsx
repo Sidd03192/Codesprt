@@ -47,28 +47,19 @@ export const getClasses = async ({ teacher_id }) => {
   }
 };
 // gets students from a specific class.
-export const fetchStudentsForClass = async (classId) => {
-  try {
-    // Query the 'enrollments' table
-    const { data: enrolledStudents, error } = await supabase
-      .from("enrollments")
-      .select(
-        `
-        student_id,
-        students ( id, full_name ) 
-      `
-      ) // Select related student data
-      .eq("class_id", classId);
+export async function fetchStudentsForClass(classId) {
+  console.log("Fetching students for class:", classId);
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("student_id, full_name, email") // Just select the columns you need
+    .eq("class_id", classId);
 
-    if (error) {
-      alert(error.message);
-      throw error;
-    }
-    // The data will be shaped like [{ student_id: ..., students: { id: ..., full_name: ... }}, ...]
-    // We can map it to a cleaner structure.
-    const students = enrolledStudents.map((enrollment) => enrollment.students);
-    return students;
-  } catch (error) {
-    console.error("Error fetching students for class:", error.message);
+  if (error) {
+    console.error("Error fetching enrollments:", error);
+    return [];
+  } else {
+    console.log("Enrollments:", data);
   }
-};
+
+  return data;
+}

@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   Card,
@@ -21,7 +22,7 @@ import {
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
 import AssignmentDropdown from "../../components/dropdown";
 import { RichTextEditor } from "../../components/assignment/RichText/rich-description";
-export const Assignments = ({ session }) => {
+export const Assignments = ({ session, classes }) => {
   const [selected, setSelected] = React.useState("all");
   const [searchValue, setSearchValue] = React.useState("");
   const [open, setOpen] = React.useState(false);
@@ -140,7 +141,7 @@ export const Assignments = ({ session }) => {
                   <h1 className="text-xl font-semibold">Assignment Creator</h1>
                 </div>
               </ModalHeader>
-              <CreateAssignmentPage session={session} />
+              <CreateAssignmentPage session={session} classes={classes} />
             </ModalContent>
           </Modal>
         </CardHeader>

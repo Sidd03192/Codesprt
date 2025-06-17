@@ -1,6 +1,6 @@
 "use client";
 import { insertUserIfNew } from "./api";
-
+import { getClasses } from "./api";
 import React from "react";
 import {
   Drawer,
@@ -29,29 +29,79 @@ export default function Dashboard() {
 
   // update user data if new user
   const [session, setSession] = useState(null);
-  const fetchSession = async () => {
-    const currentSession = await supabase.auth.getSession();
-    console.log(currentSession);
-    setSession(currentSession.data.session);
-  };
-  // console.log("Current session:", currentSession);
+  const [classes, setClasses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
-    fetchSession();
-
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("Auth state changed:", event, session);
+      (_event, session) => {
         setSession(session);
+        setIsLoading(false);
       }
     );
-    if (!session) {
-      console.log("No session found, redirecting to login...");
-      // window.location.href = "/authentication"; // Redirect to login page if no session
-    }
     return () => {
-      authListener.subscription.unsubscribe(); // need to unsubscribe to avoid memory leaks
+      authListener.subscription.unsubscribe();
     };
   }, []);
+
+  // for changes to the classes table.
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // --- 1. Initial Data Fetch ---
+    // This gets the data when the component first loads.
+    const fetchInitialClasses = async () => {
+      try {
+        const initialClasses = await getClasses({
+          teacher_id: session.user.id,
+        });
+        setClasses(initialClasses || []);
+        console.log("Initial classes:", initialClasses);
+      } catch (error) {
+        console.error("Error fetching initial classes:", error);
+      }
+    };
+
+    fetchInitialClasses();
+
+    // --- 2. Set up the Realtime Subscription ---
+    const channel = supabase
+      .channel("public:classes") // A unique channel name for this table
+      .on(
+        "postgres_changes", // Listen to database changes
+        {
+          event: "*", // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: "public",
+          table: "classes",
+          // Filter to only get changes for the current teacher's classes
+          filter: `teacher_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          console.log("Change received!", payload);
+
+          if (payload.eventType === "INSERT") {
+            setClasses((currentClasses) => [...currentClasses, payload.new]);
+          } else if (payload.eventType === "UPDATE") {
+            setClasses((currentClasses) =>
+              currentClasses.map((c) =>
+                c.id === payload.new.id ? payload.new : c
+              )
+            );
+          } else if (payload.eventType === "DELETE") {
+            // Remove the deleted class from our state
+            setClasses((currentClasses) =>
+              currentClasses.filter((c) => c.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // --- 3. Cleanup Function ---
+    // This is critical. When the component unmounts, we need to remove the subscription.
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -99,11 +149,11 @@ export default function Dashboard() {
         case "overview":
           return <Overview />;
         case "assignments":
-          return <Assignments session={session} />;
+          return <Assignments session={session} classes={classes} />;
         case "gradebook":
           return <Gradebook />;
         case "classroom":
-          return <Classroom session={session} />;
+          return <Classroom session={session} classes={classes} />;
         default:
           return <Overview />;
       }
@@ -129,7 +179,9 @@ export default function Dashboard() {
     setActivePage(page);
   };
 
-  return (
+  return isLoading ? (
+    <div>Loading...</div>
+  ) : (
     <div className="flex h-screen w-full bg-background">
       {/* Desktop Sidebar */}
       {!isMobile && (
@@ -186,6 +238,7 @@ export default function Dashboard() {
       )}
 
       {/* Main Content */}
+
       <div className="flex flex-1 flex-col overflow-hidden w-full">
         {/* Header */}
         <header className="flex h-12 items-center  border-b  bg-content1 justify-between  border-divider px-1">
