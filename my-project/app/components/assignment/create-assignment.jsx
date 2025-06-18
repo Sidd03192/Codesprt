@@ -70,6 +70,8 @@ export default function CreateAssignmentPage({ session, classes }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
   const [isLoading, setIsLoading] = React.useState(false);
   const [students, setStudents] = useState([]);
+  const [startDate, setStartDate] = useState(null);
+  const [dueDate, setDueDate] = useState(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
 
   useEffect(() => {
@@ -317,10 +319,8 @@ export default function CreateAssignmentPage({ session, classes }) {
                   label="Open Assignment at"
                   variant="bordered"
                   granularity="minute"
-                  value={formData.startDate}
-                  onValueChange={(value) =>
-                    handleFormChange("startDate", value)
-                  }
+                  value={startDate}
+                  onChange={setStartDate}
                 />
                 <DatePicker
                   hideTimeZone
@@ -329,8 +329,8 @@ export default function CreateAssignmentPage({ session, classes }) {
                   label="Close Assignment at"
                   variant="bordered"
                   granularity="minute"
-                  value={formData.dueDate}
-                  onValueChange={(value) => handleFormChange("dueDate", value)}
+                  value={dueDate}
+                  onChange={setDueDate}
                 />
               </div>
 

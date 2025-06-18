@@ -38,7 +38,7 @@ export const Testcase = ({ formData, setFormData }) => {
 
       setFormData((prev) => ({
         ...prev,
-        testCases: [...prev.testCases, testCase],
+        testcases: [...prev.testcases, testCase],
       }));
 
       setNewTestCase({
@@ -56,14 +56,14 @@ export const Testcase = ({ formData, setFormData }) => {
   const handleRemoveTestCase = (id) => {
     setFormData((prev) => ({
       ...prev,
-      testCases: prev.testCases.filter((tc) => tc.id !== id),
+      testcases: prev.testcases.filter((tc) => tc.id !== id),
     }));
   };
 
   const deleteAllTestCases = () => {
     setFormData((prev) => ({
       ...prev,
-      testCases: [],
+      testcases: [],
     }));
   };
 
