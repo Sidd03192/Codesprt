@@ -6,6 +6,8 @@ import {
   ChevronRight,
   GripVertical,
 } from "lucide-react";
+import { Button, Tabs, Tab } from "@heroui/react";
+import Editor from "@monaco-editor/react";
 
 const CodingInterface = () => {
   const [activeTab, setActiveTab] = useState("description");
@@ -79,27 +81,29 @@ const CodingInterface = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-slate-900 via-gray-900 to-zinc-900 p-4 flex gap-4">
+    <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-4">
       {/* Left Panel - Problem Description */}
       <div
-        className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/50"
         style={{ width: `${leftWidth}%` }}
       >
         {/* Header Tabs */}
-        <div className="flex border-b border-white/10 bg-black/20 rounded-t-2xl">
-          {["description", "submissions", "hints"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-4 text-sm font-medium capitalize transition-all duration-200 first:rounded-tl-2xl ${
-                activeTab === tab
-                  ? "text-blue-400 border-b-2 border-blue-400 bg-blue-500/10"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="px-2 pt-2 border-b border-white/10 bg-black/20 rounded-t-2xl">
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={setActiveTab}
+            aria-label="Problem Sections"
+            color="primary"
+            variant="underlined"
+            className="font-medium"
+          >
+            {["description", "submissions", "hints"].map((tab) => (
+              <Tab
+                key={tab}
+                title={tab.charAt(0).toUpperCase() + tab.slice(1)}
+              />
+            ))}
+          </Tabs>
         </div>
 
         {/* Problem Content */}
@@ -233,7 +237,7 @@ const CodingInterface = () => {
 
       {/* Right Panel - Code Editor and Console */}
       <div
-        className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel"
+        className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
         style={{ width: `${100 - leftWidth - 1}%` }}
       >
         {/* Code Editor Section */}
@@ -254,31 +258,46 @@ const CodingInterface = () => {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 group">
+              <Button
+                isIconOnly
+                variant="light"
+                className="p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 group"
+              >
                 <RotateCcw
                   size={16}
                   className="text-gray-400 group-hover:text-white"
                 />
-              </button>
-              <button className="p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 group">
+              </Button>
+              <Button
+                isIconOnly
+                variant="light"
+                className="p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 group"
+              >
                 <Settings
                   size={16}
                   className="text-gray-400 group-hover:text-white"
                 />
-              </button>
+              </Button>
             </div>
           </div>
 
           {/* Code Editor */}
-          <div className="flex-1 bg-black/30">
-            <textarea
+          <div className="flex-1 bg-black/30 pt-2">
+            <Editor
+              height="100%"
+              language={selectedLanguage}
+              theme="vs-dark"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full h-full p-6 bg-transparent text-white font-mono text-sm resize-none focus:outline-none placeholder-gray-500"
-              placeholder="Write your code here..."
-              style={{
-                fontFamily:
-                  'Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              onChange={(newValue) => setCode(newValue || "")}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: true,
+                fontSize: 15,
+                lineNumbers: "on",
+                glyphMargin: false,
+                padding: { top: 16, bottom: 16 }, // Added padding
+                wordWrap: "on", // Added wordWrap
+                automaticLayout: true, // Added automaticLayout
               }}
             />
           </div>
@@ -298,24 +317,31 @@ const CodingInterface = () => {
           className="flex flex-col"
         >
           {/* Console Tabs */}
-          <div className="flex border-b border-white/10 bg-black/20">
-            {[
-              { id: "testcases", label: "Test Cases", icon: "🧪" },
-              { id: "console", label: "Console", icon: "💻" },
-              { id: "result", label: "Result", icon: "📊" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setConsoleTab(tab.id)}
-                className={`px-6 py-3 text-sm font-medium transition-all duration-200 ${
-                  consoleTab === tab.id
-                    ? "text-blue-400 border-b-2 border-blue-400 bg-blue-500/10"
-                    : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
-                }`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
+          <div className="px-2 pt-1 border-b border-white/10 bg-black/20">
+            <Tabs
+              selectedKey={consoleTab}
+              onSelectionChange={setConsoleTab}
+              aria-label="Console Sections"
+              color="primary"
+              variant="underlined"
+              className="font-medium"
+            >
+              {[
+                { id: "testcases", label: "Test Cases", icon: "🧪" },
+                { id: "console", label: "Console", icon: "💻" },
+                { id: "result", label: "Result", icon: "📊" },
+              ].map((tab) => (
+                <Tab
+                  key={tab.id}
+                  title={
+                    <span className="flex items-center gap-2">
+                      {tab.icon}
+                      {tab.label}
+                    </span>
+                  }
+                />
+              ))}
+            </Tabs>
           </div>
 
           {/* Console Content */}
@@ -358,30 +384,31 @@ const CodingInterface = () => {
         {/* Action Bar */}
         <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
           <div className="flex items-center gap-4">
-            <button
+            <Button
               onClick={handleRun}
               disabled={isRunning}
+              startContent={<Play size={16} />}
               className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 isRunning
                   ? "bg-gray-600/50 text-gray-400 cursor-not-allowed"
                   : "bg-gray-700/60 text-white hover:bg-gray-600/60 border border-gray-600/50 hover:border-gray-500/50"
               }`}
             >
-              <Play size={16} />
               {isRunning ? "Running..." : "Run Code"}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
+              startContent={<ChevronRight size={16} />}
+              color="success"
               className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 isSubmitting
                   ? "bg-emerald-700/60 text-emerald-200 cursor-not-allowed"
                   : "bg-emerald-600/80 text-white hover:bg-emerald-500/80 border border-emerald-500/50 hover:border-emerald-400/50 shadow-lg shadow-emerald-500/20"
               }`}
             >
-              <ChevronRight size={16} />
               {isSubmitting ? "Submitting..." : "Submit"}
-            </button>
+            </Button>
           </div>
           <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
             ⏱️ 0ms | 💾 0MB
