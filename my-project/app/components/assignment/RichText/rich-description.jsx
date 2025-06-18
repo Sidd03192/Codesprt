@@ -1,16 +1,19 @@
+"use client";
+
 // RichTextEditor.jsx
 
 // future features.: Include better table ui in the description.
 
 import React from "react";
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import Superscript from "@tiptap/extension-superscript";
-import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import BulletList from "@tiptap/extension-bullet-list";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
 import ListItem from "@tiptap/extension-list-item";
+import BulletList from "@tiptap/extension-bullet-list";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { Placeholder } from "@tiptap/extensions";
 import Heading from "@tiptap/extension-heading";
@@ -24,7 +27,7 @@ lowlight.register("javascript", js);
 
 import { Toolbar } from "./toolbar";
 
-export const RichTextEditor = ({ className, editorRef }) => {
+export const RichTextEditor = ({ editorRef }) => {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -96,6 +99,20 @@ export const RichTextEditor = ({ className, editorRef }) => {
     },
   });
 
+  useEffect(() => {
+    if (editorRef) {
+      // Assign the Tiptap editor instance to the .current property
+      editorRef.current = editor;
+    }
+
+    // Optional but good practice: Cleanup function to nullify the ref
+    // when the component unmounts, preventing potential memory leaks.
+    return () => {
+      if (editorRef) {
+        editorRef.current = null;
+      }
+    };
+  }, [editorRef, editor]);
   return (
     <div className="md:col-span-2 ">
       <div className="mb-2">

@@ -22,8 +22,9 @@ import {
   Tooltip,
   form,
   Spinner,
+  addToast,
 } from "@heroui/react";
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import {
   Code,
   WandSparkles,
@@ -37,12 +38,12 @@ import {
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { RichTextEditor } from "./RichText/rich-description";
-import { useRef } from "react";
 import { executeCode } from "../editor/api";
 import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
+import { AssignmentPreview } from "./assignment-preview";
 import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
-export default function CreateAssignmentPage({ session, classes }) {
+export default function CreateAssignmentPage({ session, classes, setOpen }) {
   const [formData, setFormData] = React.useState({
     classId: "",
     title: "",
@@ -66,6 +67,7 @@ export default function CreateAssignmentPage({ session, classes }) {
 
   const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
   const editorRef = React.useRef(null);
+  const descriptionRef = useRef(null);
   const fileInputRef = React.useRef(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
   const [isLoading, setIsLoading] = React.useState(false);
@@ -73,6 +75,9 @@ export default function CreateAssignmentPage({ session, classes }) {
   const [startDate, setStartDate] = useState(null);
   const [dueDate, setDueDate] = useState(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [showPreviewModal, setShowPreviewModal] = React.useState(false);
+  const [assignmentPreviewData, setAssignmentPreviewData] =
+    React.useState(null);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -93,14 +98,14 @@ export default function CreateAssignmentPage({ session, classes }) {
 
   const selectedClass = classes?.find((c) => c.id === formData.classId) || null;
 
-  const handleClassChange = (classId) => {
+  const handleClassChange = useCallback((classId) => {
     // updates class Id
     setFormData((prev) => ({
       ...prev,
       classId,
       selectedStudentIds: [],
     }));
-  };
+  });
   const handleFormChange = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
@@ -128,6 +133,19 @@ export default function CreateAssignmentPage({ session, classes }) {
     }));
   };
 
+  const handleEditorDidMount = (editor) => {
+    editorRef.current = editor;
+
+    // Add click handler for line locking
+    editor.onMouseDown((e) => {
+      // Check if click is in the line number area (gutter)
+      if (e.target.type === 2) {
+        // Monaco editor gutter area type
+        const lineNumber = e.target.position.lineNumber;
+        handleToggleLockLine(lineNumber);
+      }
+    });
+  };
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
 
@@ -176,24 +194,24 @@ export default function CreateAssignmentPage({ session, classes }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true); // Start loading
+    // setIsSubmitting(true); // Start loading
     console.log("Form submitted:", formData);
 
     const code = editorRef.current.getValue();
-
+    const description = descriptionRef.current.getJSON();
     const assignmentData = {
       class_id: formData.classId, // need to update thsi
-      teacher_id: formData.teacherId,
+      teacher_id: session.user.id,
       title: formData.title,
-      description: formData.description, // Assuming this holds the text content from RichTextEditor
+      description: description, // Assuming this holds the text content from RichTextEditor
       language: selectedLanguage,
       code_template: code,
       hints: "", // To be implemented
-      open_at: formData.startDate,
-      due_at: formData.dueDate,
+      open_at: startDate.toString(),
+      due_at: dueDate.toString(),
       created_at: new Date().toISOString(),
       status: "inactive",
-      testcases: formData.testcases,
+      test_cases: formData.testcases,
       locked_lines: formData.lockedLines,
       hidden_lines: formData.hiddenLines,
       allow_late_submission: formData.allowLateSubmission,
@@ -206,86 +224,146 @@ export default function CreateAssignmentPage({ session, classes }) {
 
     console.log("Submitting assignmentData to the database:", assignmentData);
 
-    // try {
-    //   const { data: assignmentResult, error: assignmentError } = await supabase
-    //     .from("assignments")
-    //     .insert([assignmentData])
-    //     .select();
+    try {
+      const { data: assignmentResult, error: assignmentError } = await supabase
+        .from("assignments")
+        .insert([assignmentData])
+        .select();
 
-    //   if (assignmentError) {
-    //     console.error("Error inserting assignment:", assignmentError);
-    //     alert(`Error creating assignment: ${assignmentError.message}`);
-    //     setIsSubmitting(false); // Stop loading
-    //     return;
-    //   }
+      if (assignmentError) {
+        console.error("Error inserting assignment:", assignmentError);
 
-    //   console.log("Assignment created successfully:", assignmentResult);
+        addToast({
+          title: "Unexpected Error",
+          description: "An unexpected error occurred. Please try again.",
+          color: "danger",
+          duration: 5000,
+          placement: "top-center",
+          variant: "solid",
+        });
+        setIsSubmitting(false); // Stop loading
+        return;
+      }
 
-    //   if (assignmentResult && assignmentResult.length > 0) {
-    //     const newAssignmentId = assignmentResult[0].id;
+      console.log("Assignment created successfully:", assignmentResult);
 
-    //     if (
-    //       formData.selectedStudentIds &&
-    //       formData.selectedStudentIds.length > 0
-    //     ) {
-    //       const assignmentStudentData = formData.selectedStudentIds.map(
-    //         (studentId) => ({
-    //           assignment_id: newAssignmentId,
-    //           student_id: studentId,
-    //         })
-    //       );
+      if (assignmentResult && assignmentResult.length > 0) {
+        const newAssignmentId = assignmentResult[0].id;
 
-    //       console.log(
-    //         "Submitting assignmentStudentData:",
-    //         assignmentStudentData
-    //       );
+        if (
+          formData.selectedStudentIds &&
+          formData.selectedStudentIds.length > 0
+        ) {
+          const assignmentStudentData = formData.selectedStudentIds.map(
+            (studentId) => ({
+              assignment_id: newAssignmentId,
+              student_id: studentId,
+              start_date: startDate.toString(),
+            })
+          );
 
-    //       const {
-    //         data: studentAssignmentResult,
-    //         error: studentAssignmentError,
-    //       } = await supabase
-    //         .from("assignment_students")
-    //         .insert(assignmentStudentData);
+          console.log(
+            "Submitting assignmentStudentData:",
+            assignmentStudentData
+          );
 
-    //       if (studentAssignmentError) {
-    //         console.error(
-    //           "Error inserting student assignments:",
-    //           studentAssignmentError
-    //         );
-    //         alert(
-    //           `Error assigning to students: ${studentAssignmentError.message}`
-    //         );
-    //         // Note: Here, the assignment is created, but student association failed.
-    //         // You might want to inform the user or handle this case specifically.
-    //         setIsSubmitting(false); // Stop loading
-    //         return;
-    //       }
-    //       console.log(
-    //         "Student assignments created successfully:",
-    //         studentAssignmentResult
-    //       );
-    //     } else {
-    //       console.log("No students selected for this assignment.");
-    //     }
-    //     alert("Assignment created successfully!");
-    //   } else {
-    //     console.error(
-    //       "Assignment creation returned no result or empty result array."
-    //     );
-    //     alert("Error creating assignment: No result returned.");
-    //   }
-    // } catch (error) {
-    //   console.error("An unexpected error occurred during submission:", error);
-    //   alert(`An unexpected error occurred: ${error.message}`);
-    // } finally {
-    //   setIsSubmitting(false); // Stop loading in all cases
-    // }
+          const {
+            data: studentAssignmentResult,
+            error: studentAssignmentError,
+          } = await supabase
+            .from("assignment_students")
+            .insert(assignmentStudentData);
+
+          if (studentAssignmentError) {
+            console.error(
+              "Error inserting student assignments:",
+              studentAssignmentError
+            );
+            addToast({
+              title: "Unexpected Error",
+              description: "An unexpected error occurred. Please try again.",
+              color: "danger",
+              duration: 5000,
+              placement: "top-center",
+              variant: "solid",
+            });
+            // Note: Here, the assignment is created, but student association failed.
+            // You might want to inform the user or handle this case specifically.
+            setIsSubmitting(false); // Stop loading
+            return;
+          }
+          console.log(
+            "Student assignments created successfully:",
+            studentAssignmentResult
+          );
+        } else {
+          console.log("No students selected for this assignment.");
+        }
+        addToast({
+          title: "Assignment Created Successfully",
+          description:
+            "The assignment will now be visible to you in the assignments page",
+          color: "success",
+          duration: 5000,
+          placement: "top-center",
+          variant: "solid",
+        });
+      } else {
+        console.error(
+          "Assignment creation returned no result or empty result array."
+        );
+        addToast({
+          title: "Unexpected Error",
+          description: "An unexpected error occurred. Please try again.",
+          color: "danger",
+          duration: 5000,
+          placement: "top-center",
+          variant: "solid",
+        });
+      }
+    } catch (error) {
+      console.error("An unexpected error occurred during submission:", error);
+      alert(`An unexpected error occurred: ${error.message}`);
+    } finally {
+      setIsSubmitting(false); // Stop loading in all cases
+      setOpen(false);
+    }
   };
 
   const handlePreview = () => {
-    console.log("Preview assignment:", formData);
-    // Implementation for preview functionality
+    const code = editorRef.current?.getValue?.(); // Get code from editor
+    const previewData = {
+      title: formData.title || "Untitled Assignment",
+      description: formData.description || "<p>No description provided.</p>", // Ensure description is in HTML string format if RichTextEditor provides it
+      code_template: code || "// No code provided",
+      language: selectedLanguage || "javascript",
+      // Add any other fields that AssignmentPreview might expect, e.g., constraints, example, testcases (though testcases might be out of scope for a simple preview)
+      // For now, focusing on title, description, code_template, and language.
+    };
+    setAssignmentPreviewData(previewData);
+    setShowPreviewModal(true);
+    console.log("Previewing assignment with data:", previewData);
   };
+
+  // handling lines stuff
+  const handleLockedLinesChange = useCallback((newLockedLines) => {
+    setFormData((prev) => {
+      // Avoid re-render if the value hasn't actually changed
+      if (JSON.stringify(prev.lockedLines) === JSON.stringify(newLockedLines)) {
+        return prev;
+      }
+      return { ...prev, lockedLines: newLockedLines };
+    });
+  }, []); // Empty dependency array means this function is created only once
+
+  const handleHiddenLinesChange = useCallback((newHiddenLines) => {
+    setFormData((prev) => {
+      if (JSON.stringify(prev.hiddenLines) === JSON.stringify(newHiddenLines)) {
+        return prev;
+      }
+      return { ...prev, hiddenLines: newHiddenLines };
+    });
+  }, []);
 
   const languages = [
     { key: "python", name: "Python" },
@@ -337,6 +415,7 @@ export default function CreateAssignmentPage({ session, classes }) {
               <RichTextEditor
                 className="md:col-span-2 bg-zinc-200 max-h-[400px]"
                 isRequired
+                editorRef={descriptionRef}
               />
 
               <Select
@@ -490,8 +569,8 @@ export default function CreateAssignmentPage({ session, classes }) {
               <CodeEditor
                 language={selectedLanguage}
                 editorRef={editorRef}
-                formData={formData}
-                setFormData={setFormData}
+                handleHiddenLinesChange={handleHiddenLinesChange}
+                handleLockedLinesChange={handleLockedLinesChange}
               />
 
               {output && (
@@ -701,7 +780,6 @@ export default function CreateAssignmentPage({ session, classes }) {
                 color="primary"
                 size="lg"
                 type="submit"
-                isDisabled={isSubmitting}
                 isLoading={isSubmitting}
                 spinner={<Spinner />}
               >
@@ -710,6 +788,12 @@ export default function CreateAssignmentPage({ session, classes }) {
             </div>
           </div>
         </form>
+        {showPreviewModal && assignmentPreviewData && (
+          <AssignmentPreview
+            assignment={assignmentPreviewData}
+            onClose={() => setShowPreviewModal(false)}
+          />
+        )}
       </main>
     </div>
   );

@@ -1,7 +1,15 @@
 import React from "react";
-import { Card, CardBody, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Chip } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Chip,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { useTheme } from "@heroui/use-theme";
 import Editor from "@monaco-editor/react";
 
 export const AssignmentWorkspace = ({ assignment }) => {
@@ -51,12 +59,20 @@ export const AssignmentWorkspace = ({ assignment }) => {
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* Left Panel: Assignment Description */}
-      <div className={`w-2/5 p-4 overflow-y-auto border-r ${isDark ? "border-gray-700" : "border-gray-200"}`}>
+      <div
+        className={`w-2/5 p-4 overflow-y-auto border-r ${
+          isDark ? "border-gray-700" : "border-gray-200"
+        }`}
+      >
         <h1 className="text-2xl font-bold mb-4">{assignment.title}</h1>
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold mb-2">Description</h2>
-            <p className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+            <p
+              className={`text-sm ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
               {assignment.description}
             </p>
           </div>
@@ -64,7 +80,11 @@ export const AssignmentWorkspace = ({ assignment }) => {
             <h2 className="text-lg font-semibold mb-2">Example</h2>
             <Card className={isDark ? "bg-gray-800" : "bg-gray-50"}>
               <CardBody>
-                <pre className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                <pre
+                  className={`text-sm ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
                   {assignment.example}
                 </pre>
               </CardBody>
@@ -72,7 +92,11 @@ export const AssignmentWorkspace = ({ assignment }) => {
           </div>
           <div>
             <h2 className="text-lg font-semibold mb-2">Constraints</h2>
-            <ul className={`list-disc list-inside text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+            <ul
+              className={`list-disc list-inside text-sm ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
               {assignment.constraints.map((constraint, index) => (
                 <li key={index}>{constraint}</li>
               ))}
@@ -86,22 +110,26 @@ export const AssignmentWorkspace = ({ assignment }) => {
         <div className="flex justify-between items-center p-4">
           <Dropdown>
             <DropdownTrigger>
-              <Button 
-                variant="flat" 
+              <Button
+                variant="flat"
                 color={isDark ? "success" : "primary"}
-                startContent={<Icon icon={languageOptions.find(l => l.key === language).icon} />}
+                startContent={
+                  <Icon
+                    icon={languageOptions.find((l) => l.key === language).icon}
+                  />
+                }
               >
-                {languageOptions.find(l => l.key === language).name}
+                {languageOptions.find((l) => l.key === language).name}
               </Button>
             </DropdownTrigger>
-            <DropdownMenu 
-              aria-label="Language selection" 
+            <DropdownMenu
+              aria-label="Language selection"
               onAction={handleLanguageChange}
               selectedKeys={[language]}
             >
               {languageOptions.map((lang) => (
-                <DropdownItem 
-                  key={lang.key} 
+                <DropdownItem
+                  key={lang.key}
                   startContent={<Icon icon={lang.icon} />}
                 >
                   {lang.name}
@@ -145,9 +173,15 @@ export const AssignmentWorkspace = ({ assignment }) => {
             }}
           />
         </div>
-        <div className={`h-1/3 p-4 overflow-y-auto ${isDark ? "bg-gray-800" : "bg-gray-50"}`}>
+        <div
+          className={`h-1/3 p-4 overflow-y-auto ${
+            isDark ? "bg-gray-800" : "bg-gray-50"
+          }`}
+        >
           <h2 className="text-lg font-semibold mb-2">Output</h2>
-          <pre className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+          <pre
+            className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}
+          >
             {output || "Run your code to see the output here."}
           </pre>
         </div>

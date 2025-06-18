@@ -8,34 +8,45 @@ import {
   pythonLibMethods,
   pythonKeywords,
   extraPythonModules,
+  extraJavaClasses,
 } from "./constants";
 import { PenOff, Eye } from "lucide-react";
 export default function CodeEditor({
   language,
   editorRef,
-  formData,
-  setFormData,
+  initialLockedLines,
+  initialHiddenLines,
+  onLockedLinesChange,
+  onHiddenLinesChange,
 }) {
   const monacoRef = useRef(null);
+
   const monaco = useMonaco();
   const editor = editorRef.current;
+  const [model, setModel] = useState(null);
   const [val, setVal] = useState("");
   const [checkedLines, setCheckedLines] = useState(new Set());
   const [eyeLines, setEyeLines] = useState(new Set());
   const [decorIds, setDecorIds] = useState([]);
   const [hoveredLine, setHoveredLine] = useState(null); // Track hovered line
 
+  // send locked & hidden lines to parent component
+
   useEffect(() => {
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      lockedLines: checkedLines,
-      hiddenLines: eyeLines,
-    }));
-  }, [checkedLines, eyeLines]);
+    // Report changes to the parent via the new callbacks
+    // Pass simple arrays, which are easier to work with than Sets as props.
+    if (onLockedLinesChange) {
+      onLockedLinesChange(Array.from(checkedLines));
+    }
+    if (onHiddenLinesChange) {
+      onHiddenLinesChange(Array.from(eyeLines));
+    }
+  }, [checkedLines, eyeLines, onLockedLinesChange, onHiddenLinesChange]);
 
   function handleEditorMount(editor, monaco) {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setModel(editor.getModel());
 
     // turn on glyphMargin and keep line numbers on
     editor.updateOptions({
@@ -140,7 +151,6 @@ export default function CodeEditor({
     if (!editor || !monaco) return;
 
     // Get current model and line count
-    const model = editor.getModel();
     if (!model) return;
 
     const totalLines = model.getLineCount();
@@ -267,6 +277,7 @@ export default function CodeEditor({
     return () => document.head.removeChild(style);
   }, []);
 
+  // Code completion
   useEffect(() => {
     if (!monaco || !editor) return;
     let provider;
@@ -555,7 +566,6 @@ export default function CodeEditor({
   useEffect(() => {
     if (!editor || !monaco) return;
 
-    const model = editor.getModel();
     if (!model) return;
 
     // Handle model content changes
@@ -629,7 +639,6 @@ export default function CodeEditor({
   // Clean up invalid lines when content changes
   useEffect(() => {
     if (!editor) return;
-    const model = editor.getModel();
     if (!model) return;
 
     const totalLines = model.getLineCount();
@@ -661,9 +670,7 @@ export default function CodeEditor({
         height="600px"
         language={language}
         theme="vs-dark"
-        value={val}
         onMount={handleEditorMount}
-        onChange={(v) => setVal(v)}
         options={{
           minimap: { enabled: false },
           scrollBeyondLastLine: true,

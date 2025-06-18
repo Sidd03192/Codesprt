@@ -141,7 +141,11 @@ export const Assignments = ({ session, classes }) => {
                   <h1 className="text-xl font-semibold">Assignment Creator</h1>
                 </div>
               </ModalHeader>
-              <CreateAssignmentPage session={session} classes={classes} />
+              <CreateAssignmentPage
+                session={session}
+                classes={classes}
+                setOpen={setOpen}
+              />
             </ModalContent>
           </Modal>
         </CardHeader>
