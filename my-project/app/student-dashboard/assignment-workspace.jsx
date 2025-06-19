@@ -16,8 +16,11 @@ import {
   Card,
   CardBody,
   CardHeader,
+  Tooltip,
 } from "@heroui/react";
 import Editor from "@monaco-editor/react";
+import { executeCode } from "../components/editor/api";
+import CodeEditor from "../components/editor/code-editor";
 
 const CodingInterface = ({ session, assignment }) => {
   const [activeTab, setActiveTab] = useState("description");
@@ -27,14 +30,8 @@ const CodingInterface = ({ session, assignment }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [leftWidth, setLeftWidth] = useState(45); // percentage
   const [topHeight, setTopHeight] = useState(65); // percentage of right panel
-  const [code, setCode] = useState(`def twoSum(nums, target):
-    """
-    :type nums: List[int]
-    :type target: int
-    :rtype: List[int]
-    """
-    # Write your solution here
-    pass`);
+  const [time, setTime] = useState("-");
+  const editorRef = React.useRef(null);
 
   const isDragging = useRef(false);
   const dragType = useRef("");
@@ -47,6 +44,43 @@ const CodingInterface = ({ session, assignment }) => {
     },
     []
   );
+  const [output, setOutput] = useState("");
+
+  const runCode = async () => {
+    const code = editorRef.current?.getValue?.();
+    console.log("Running code..:", code);
+
+    if (!code) {
+      setOutput("Please select a language and write some code.");
+      return;
+    }
+
+    try {
+      // TODO edit teh selecedLanguage
+      setIsRunning(true);
+      const startTime = performance.now();
+      const result = await executeCode("java", code);
+      const endTime = performance.now();
+
+      const runResult = result.run || {};
+      if (!runResult.stderr) {
+        setTime((endTime - startTime).toFixed(2));
+      }
+      const finalOutput =
+        runResult.output ||
+        runResult.stdout ||
+        runResult.stderr ||
+        "No output.";
+
+      setOutput(finalOutput);
+    } catch (error) {
+      console.error(error);
+      console.error("Execution failed:", error);
+      setOutput("Execution failed.");
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   const handleMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
@@ -94,11 +128,11 @@ const CodingInterface = ({ session, assignment }) => {
     <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
       {/* Left Panel - Problem Description */}
       <Card
-        className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/40"
+        className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/40"
         style={{ width: `${leftWidth}%` }}
       >
         {/* Header Tabs */}
-        <CardHeader className="pb-0 px-2 border-b border-white/10 bg-black/20 rounded-t-2xl">
+        <CardHeader className="pb-0 pt-4 px-2 border-b border-white/10 bg-black/20 rounded-t-2xl min-h-[50px]">
           <Tabs
             selectedKey={activeTab}
             onSelectionChange={setActiveTab}
@@ -246,38 +280,43 @@ const CodingInterface = ({ session, assignment }) => {
       </div>
 
       {/* Right Panel - Code Editor and Console */}
-      <div
-        className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
+      <Card
+        className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
         style={{ width: `${100 - leftWidth - 1}%` }}
       >
         {/* Code Editor Section */}
         <div style={{ height: `${topHeight}%` }} className="flex flex-col">
           {/* Code Editor Header */}
-          <div className="flex items-center justify-between px-6 py-4 bg-black/20 rounded-t-2xl border-b border-white/10">
+          <CardHeader className="flex items-center justify-between  py-2 px-6 border-b border-white/10 bg-black/20 rounded-t-2xl h-14">
             <Select
               defaultSelectedKeys={["🐍 Python"]}
               onChange={(e) => setSelectedLanguage(e.target.value)}
-              size=""
-              className="bg-gray-800/60 text-white w-36 rounded-lg "
+              className="bg-gray-800/60 text-white w-36 rounded-lg  "
+              size="sm"
             >
               <SelectItem key={"🐍 Python"}>🐍 Python</SelectItem>
               <SelectItem key="java">☕ Java</SelectItem>
             </Select>
             <div className="flex items-center gap-2">
+              <Tooltip content="Reset Code" color="danger">
+                <Button
+                  isIconOnly
+                  variant="light"
+                  className=" hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                  size="sm"
+                >
+                  <RotateCcw
+                    size={16}
+                    className="text-gray-400 group-hover:text-white"
+                  />
+                </Button>
+              </Tooltip>
+
               <Button
                 isIconOnly
                 variant="light"
-                className="p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 group"
-              >
-                <RotateCcw
-                  size={16}
-                  className="text-gray-400 group-hover:text-white"
-                />
-              </Button>
-              <Button
-                isIconOnly
-                variant="light"
-                className="p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                className=" hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                size="sm"
               >
                 <Settings
                   size={16}
@@ -285,26 +324,19 @@ const CodingInterface = ({ session, assignment }) => {
                 />
               </Button>
             </div>
-          </div>
+          </CardHeader>
 
           {/* Code Editor */}
           <div className="flex-1 bg-black/30 pt-2">
-            <Editor
-              height="100%"
-              language={selectedLanguage}
-              theme="vs-dark"
-              value={code}
-              onChange={(newValue) => setCode(newValue || "")}
-              options={{
-                minimap: { enabled: false },
-                scrollBeyondLastLine: true,
-                fontSize: 15,
-                lineNumbers: "on",
-                glyphMargin: false,
-                padding: { top: 16, bottom: 16 }, // Added padding
-                wordWrap: "on", // Added wordWrap
-                automaticLayout: true, // Added automaticLayout
-              }}
+            <CodeEditor
+              language={selectedLanguage || "java"}
+              editorRef={editorRef}
+              role="student"
+              // TODO : make this dynamic
+              starterCode={
+                "this is starter code \n and it is on multiple lines"
+              }
+              initialLockedLines={new Set([])}
             />
           </div>
         </div>
@@ -327,15 +359,14 @@ const CodingInterface = ({ session, assignment }) => {
             <Tabs
               selectedKey={consoleTab}
               onSelectionChange={setConsoleTab}
+              defaultSelectedKey={"console"}
               aria-label="Console Sections"
               color="primary"
               variant="underlined"
               className="font-medium"
             >
               {[
-                { id: "testcases", label: "Test Cases", icon: "🧪" },
-                { id: "console", label: "Console", icon: "💻" },
-                { id: "result", label: "Result", icon: "📊" },
+                { key: "console", id: "console", label: "Console", icon: "💻" },
               ].map((tab) => (
                 <Tab
                   key={tab.id}
@@ -352,46 +383,20 @@ const CodingInterface = ({ session, assignment }) => {
 
           {/* Console Content */}
           <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
-            {consoleTab === "testcases" && (
-              <div className="space-y-4">
-                <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
-                  <div className="text-sm mb-3">
-                    <div className="text-gray-400 mb-2 font-medium">Input:</div>
-                    <div className="bg-black/40 p-3 rounded-lg font-mono text-sm border border-gray-700/30">
-                      <span className="text-blue-300">nums = [2,7,11,15]</span>
-                      <br />
-                      <span className="text-orange-300">target = 9</span>
-                    </div>
-                  </div>
-                  <div className="text-sm">
-                    <div className="text-gray-400 mb-2 font-medium">
-                      Expected Output:
-                    </div>
-                    <div className="bg-black/40 p-3 rounded-lg font-mono text-sm text-emerald-300 border border-emerald-500/20">
-                      [0,1]
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {consoleTab === "console" && (
-              <div className="text-sm text-gray-400 italic">
-                💡 Click "Run Code" to see output here...
-              </div>
-            )}
-            {consoleTab === "result" && (
-              <div className="text-sm text-gray-400 italic">
-                🚀 Click "Submit" to see results here...
-              </div>
-            )}
+            <div className=" text-gray-200 text-lg">
+              {"Output: " + output || 'Click "Run Code" to see output here...'}
+            </div>
           </div>
         </div>
 
         {/* Action Bar */}
         <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
+          <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
+            ⏱️ {time}
+          </div>
           <div className="flex items-center gap-4">
             <Button
-              onClick={handleRun}
+              onPress={runCode}
               disabled={isRunning}
               startContent={<Play size={16} />}
               className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
@@ -416,11 +421,8 @@ const CodingInterface = ({ session, assignment }) => {
               {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           </div>
-          <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
-            ⏱️ 0ms | 💾 0MB
-          </div>
         </div>
-      </div>
+      </Card>
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {

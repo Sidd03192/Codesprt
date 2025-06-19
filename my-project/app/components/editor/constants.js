@@ -1,3 +1,5 @@
+export const extraJavaClasses = ["Math", "System", "String", "Object"];
+
 export const javaLibMethods = {
   // ─── Collections & Interfaces ─────────────────────────────────────
   List: [
