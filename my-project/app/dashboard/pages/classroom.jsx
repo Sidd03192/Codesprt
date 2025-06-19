@@ -28,7 +28,7 @@ import { Icon } from "@iconify/react";
 import { BookOpenCheck } from "lucide-react";
 import { BookMarked } from "lucide-react";
 import { supabase } from "../../supabase-client";
-export const Classroom = ({ session }) => {
+export const Classroom = ({ session, classes }) => {
   const [selectedClassroom, setSelectedClassroom] = React.useState(null);
   const [selectedTab, setSelectedTab] = React.useState("students");
   const [term, setTerm] = useState([]);
@@ -350,7 +350,7 @@ export const Classroom = ({ session }) => {
 
   const renderClassroomOverview = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {classrooms.map((classroom) => (
+      {classes.map((classroom) => (
         <Card key={classroom.id} className="border border-divider">
           <CardBody>
             <div className="flex items-center justify-between mb-2">

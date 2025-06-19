@@ -16,7 +16,8 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { Placeholder } from '@tiptap/extensions'
 import Heading from '@tiptap/extension-heading';
 import js from 'highlight.js/lib/languages/javascript'
-
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
 
 import { all, createLowlight } from 'lowlight';
 import './editor-styles.css'; // Import highlight.js theme (see below)
@@ -86,6 +87,10 @@ export const RichTextEditor = ({ className}) => {
           class: 'prose prose-slate dark:prose-invert', 
         },
       }),
+      TextStyle,
+    Color.configure({
+      types: ['textStyle'],
+    }),
     ],
 
     content: '',

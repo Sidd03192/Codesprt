@@ -218,11 +218,11 @@ export const StudentAssignments = () => {
                           View
                         </Button>
                         {assignment.status === "upcoming" && (
-                          <Link href = {`/assignments/${assignment.id}`}>
-                          <Button size="sm" color="primary">
-                            <Icon icon="lucide:edit-3" className="mr-1" />
+                          <Link href = {`student-dashboard/assignments/${assignment.id}`}>
+                            <button size="sm" color="primary">
+                              <Icon icon="lucide:edit-3" className="mr-1" />
                             Work on it
-                          </Button>
+                          </button>
                           </Link>
                         )}
                       </div>
