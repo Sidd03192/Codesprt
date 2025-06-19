@@ -7,7 +7,7 @@ export default function Provider({ children }) {
   // 2. Wrap HeroUIProvider at the root of your app
   return (
     <HeroUIProvider>
-      <ToastProvider />
+      <ToastProvider placement={"top-center"} />
       {children}
     </HeroUIProvider>
   );

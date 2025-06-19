@@ -65,7 +65,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
     checkStyle: false,
   });
 
-  const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
+  const [selectedLanguage, setSelectedLanguage] = React.useState();
   const editorRef = React.useRef(null);
   const descriptionRef = useRef(null);
   const fileInputRef = React.useRef(null);
@@ -151,14 +151,15 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
 
   const runCode = async () => {
     const code = editorRef.current?.getValue?.();
-    if (!code || !selectedLanguage) {
+    if (!code) {
       setOutput("Please select a language and write some code.");
       return;
     }
 
     try {
       setIsRunning(true);
-      const result = await executeCode(selectedLanguage, code);
+      const result = await executeCode(selectedLanguage || "java", code);
+      console.log(result);
       const runResult = result.run || {};
       const finalOutput =
         runResult.output ||
@@ -238,7 +239,6 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
           description: "An unexpected error occurred. Please try again.",
           color: "danger",
           duration: 5000,
-          placement: "top-center",
           variant: "solid",
         });
         setIsSubmitting(false); // Stop loading
@@ -284,7 +284,6 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
               description: "An unexpected error occurred. Please try again.",
               color: "danger",
               duration: 5000,
-              placement: "top-center",
               variant: "solid",
             });
             // Note: Here, the assignment is created, but student association failed.
@@ -520,6 +519,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
                   <Select
                     placeholder="Select a language"
                     className="min-w-[120px]"
+                    defaultSelectedKeys={["java"]}
                     value={selectedLanguage}
                     isRequired={true}
                     onChange={(e) => setSelectedLanguage(e.target.value)}
@@ -567,8 +567,9 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
               </p>
 
               <CodeEditor
-                language={selectedLanguage}
+                language={selectedLanguage || "java"}
                 editorRef={editorRef}
+                role="teacher"
                 handleHiddenLinesChange={handleHiddenLinesChange}
                 handleLockedLinesChange={handleLockedLinesChange}
               />

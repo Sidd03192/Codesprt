@@ -9,199 +9,227 @@ import {
   pythonKeywords,
   extraPythonModules,
   extraJavaClasses,
+  role,
 } from "./constants";
 import { PenOff, Eye } from "lucide-react";
+import { addToast } from "@heroui/react";
+
 export default function CodeEditor({
   language,
   editorRef,
   initialLockedLines,
-  initialHiddenLines,
+  role,
   onLockedLinesChange,
-  onHiddenLinesChange,
+  starterCode,
 }) {
   const monacoRef = useRef(null);
-
   const monaco = useMonaco();
-  const editor = editorRef.current;
-  const [model, setModel] = useState(null);
-  const [val, setVal] = useState("");
-  const [checkedLines, setCheckedLines] = useState(new Set());
-  const [eyeLines, setEyeLines] = useState(new Set());
+  const [lockedLines, setLockedLines] = useState(
+    () => new Set(initialLockedLines || [])
+  );
   const [decorIds, setDecorIds] = useState([]);
-  const [hoveredLine, setHoveredLine] = useState(null); // Track hovered line
+  const [hoveredLine, setHoveredLine] = useState(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
 
-  // send locked & hidden lines to parent component
+  const lockedLinesRef = useRef(lockedLines);
+  useEffect(() => {
+    lockedLinesRef.current = lockedLines;
+  }, [lockedLines]);
+
+  const isUndoing = useRef(false);
+  const contentChangeListener = useRef(null);
+  // --- NEW: Ref to manage listeners and the "Enter" key exception ---
+  const keyDownListener = useRef(null);
+  const allowNextChange = useRef(false);
 
   useEffect(() => {
-    // Report changes to the parent via the new callbacks
-    // Pass simple arrays, which are easier to work with than Sets as props.
     if (onLockedLinesChange) {
-      onLockedLinesChange(Array.from(checkedLines));
+      onLockedLinesChange(Array.from(lockedLines));
     }
-    if (onHiddenLinesChange) {
-      onHiddenLinesChange(Array.from(eyeLines));
-    }
-  }, [checkedLines, eyeLines, onLockedLinesChange, onHiddenLinesChange]);
+  }, [lockedLines, onLockedLinesChange]);
 
-  function handleEditorMount(editor, monaco) {
-    editorRef.current = editor;
-    monacoRef.current = monaco;
-    setModel(editor.getModel());
+  const handleEditorMount = useCallback(
+    (editor, monaco) => {
+      editorRef.current = editor;
+      monacoRef.current = monaco;
 
-    // turn on glyphMargin and keep line numbers on
-    editor.updateOptions({
-      glyphMargin: true,
-      lineNumbers: "on",
-    });
+      editor.updateOptions({
+        glyphMargin: true,
+        lineNumbers: "on",
+      });
 
-    // Mouse move handler for hover effects
-    editor.onMouseMove((e) => {
-      const t = e.target.type;
-      if (t === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
-        const line = e.target.position?.lineNumber;
-        setHoveredLine(line || null);
-      } else {
-        setHoveredLine(null);
-      }
-    });
+      // Dispose of old listeners if they exist
+      if (contentChangeListener.current)
+        contentChangeListener.current.dispose();
+      if (keyDownListener.current) keyDownListener.current.dispose();
 
-    // Mouse leave handler to clear hover
-    editor.onMouseLeave(() => {
-      setHoveredLine(null);
-    });
+      // --- NEW: onKeyDown listener to detect the "Enter" key press ---
+      keyDownListener.current = editor.onKeyDown((e) => {
+        const position = editor.getPosition();
+        if (!position) return;
 
-    // click‐handler for both the glyph margin **and** the line numbers gutter
-    // Replace the click handler in your handleEditorMount function with this:
+        // Check for "Enter" on a locked line specifically for students
+        if (
+          role === "student" &&
+          e.keyCode === monaco.KeyCode.Enter &&
+          lockedLinesRef.current.has(position.lineNumber)
+        ) {
+          // Grant a one-time pass for the upcoming content change
+          allowNextChange.current = true;
+        }
+      });
 
-    editor.onMouseDown((e) => {
-      const t = e.target.type;
-      if (
-        t === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
-        t === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS
-      ) {
-        const line = e.target.position?.lineNumber;
-        if (!line) return;
+      // --- MODIFIED: onDidChangeContent listener ---
+      contentChangeListener.current = editor
+        .getModel()
+        .onDidChangeContent((e) => {
+          if (isUndoing.current) return;
 
-        // Use a ref to track what action we need to take
-        let hasEyeIcon = false;
-        let hasCheckbox = false;
+          // --- EDIT PREVENTION FOR STUDENTS ---
+          if (role === "student") {
+            // If the "Enter" key was just approved, allow this change and reset the flag.
+            if (allowNextChange.current) {
+              allowNextChange.current = false;
+            } else {
+              // Otherwise, run the standard check to prevent illegal edits.
+              let shouldUndo = false;
+              const currentLockedLines = lockedLinesRef.current;
 
-        // Check current state
-        setEyeLines((currentEyeLines) => {
-          hasEyeIcon = currentEyeLines.has(line);
-          if (hasEyeIcon) {
-            // Remove eye icon
-            const updated = new Set(currentEyeLines);
-            updated.delete(line);
-            return updated;
+              for (const change of e.changes) {
+                const startLine = change.range.startLineNumber;
+                const endLine = change.range.endLineNumber;
+                for (let i = startLine; i <= endLine; i++) {
+                  if (currentLockedLines.has(i)) {
+                    shouldUndo = true;
+                    addToast({
+                      title: "Dissalowed Action",
+                      description: "You may not edit locked lines.",
+                      color: "warning",
+                      duration: 5000,
+                      variant: "solid",
+                    });
+                    break;
+                  }
+                }
+                if (shouldUndo) break;
+              }
+
+              if (shouldUndo) {
+                isUndoing.current = true;
+                editor.trigger("prevent-edit", "undo", null);
+
+                isUndoing.current = false;
+                return; // Stop processing if the change is reverted.
+              }
+            }
           }
-          return currentEyeLines;
+
+          // --- UPDATE LINE NUMBERS AFTER A VALID EDIT ---
+          const changes = e.changes
+            .slice()
+            .sort((a, b) => b.range.startLineNumber - a.range.startLineNumber);
+          setLockedLines((currentLockedLines) => {
+            let newLockedLines = new Set(currentLockedLines);
+            changes.forEach((change) => {
+              const startLine = change.range.startLineNumber;
+              const endLine = change.range.endLineNumber;
+              const lineCountChange =
+                (change.text.match(/\n/g) || []).length - (endLine - startLine);
+              if (lineCountChange !== 0) {
+                const updatedLines = new Set();
+                newLockedLines.forEach((lockedLine) => {
+                  if (lockedLine > startLine) {
+                    const newLine = lockedLine + lineCountChange;
+                    if (newLine > 0) updatedLines.add(newLine);
+                  } else {
+                    updatedLines.add(lockedLine);
+                  }
+                });
+                newLockedLines = updatedLines;
+              }
+            });
+            return newLockedLines;
+          });
         });
 
-        // Only handle checkbox if no eye icon was found
-        if (!hasEyeIcon) {
-          setCheckedLines((currentCheckedLines) => {
-            hasCheckbox = currentCheckedLines.has(line);
-            if (hasCheckbox) {
-              // Remove checkbox
-              const updated = new Set(currentCheckedLines);
+      // --- Teacher UI Event Listeners ---
+      editor.onMouseMove((e) => {
+        if (role === "student") return;
+        const target = e.target;
+        if (target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
+          setHoveredLine(target.position?.lineNumber || null);
+        } else {
+          setHoveredLine(null);
+        }
+      });
+
+      editor.onMouseLeave(() => {
+        setHoveredLine(null);
+      });
+
+      editor.onMouseDown((e) => {
+        if (role !== "teacher") return;
+        const target = e.target;
+        if (
+          target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+          target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS
+        ) {
+          const line = target.position?.lineNumber;
+          if (!line) return;
+
+          setLockedLines((currentLockedLines) => {
+            const updated = new Set(currentLockedLines);
+            if (updated.has(line)) {
               updated.delete(line);
-              return updated;
             } else {
-              // Add checkbox
-              const updated = new Set(currentCheckedLines);
               updated.add(line);
-              return updated;
             }
+            return updated;
           });
         }
-      }
-    });
-  }
+      });
 
-  // Function to add eye icons to selected lines
-  const addEyeToSelection = useCallback(() => {
-    if (!editor) return;
+      setIsEditorReady(true);
+    },
+    [editorRef, role] // Simplified dependencies for mounting
+  );
 
-    const selection = editor.getSelection();
-    if (!selection) return;
-
-    const startLine = selection.startLineNumber;
-    const endLine = selection.endLineNumber;
-
-    setEyeLines((prev) => {
-      const next = new Set(prev);
-      for (let i = startLine; i <= endLine; i++) {
-        next.add(i);
-        // Remove from checked lines if it exists there
-        setCheckedLines((prevChecked) => {
-          const nextChecked = new Set(prevChecked);
-          nextChecked.delete(i);
-          return nextChecked;
-        });
-      }
-      return next;
-    });
-  }, [editor]);
-
-  // whenever checkedLines or eyeLines changes, update the decorations
+  // Cleanup listener on component unmount
   useEffect(() => {
+    return () => {
+      if (contentChangeListener.current) {
+        contentChangeListener.current.dispose();
+      }
+    };
+  }, []);
+
+  // useEffect for applying decorations
+  useEffect(() => {
+    if (!isEditorReady || !editorRef.current || !monacoRef.current) return;
+
     const editor = editorRef.current;
     const monaco = monacoRef.current;
-    if (!editor || !monaco) return;
+    const decorations = [];
 
-    // Get current model and line count
-    if (!model) return;
-
-    const totalLines = model.getLineCount();
-
-    // Filter out lines that don't exist anymore
-    const validCheckedLines = Array.from(checkedLines).filter(
-      (line) => line <= totalLines
-    );
-    const validEyeLines = Array.from(eyeLines).filter(
-      (line) => line <= totalLines
-    );
-
-    const newDecs = [];
-
-    // Add decorations for checked lines (checkbox icons)
-    validCheckedLines.forEach((line) => {
-      newDecs.push({
-        range: new monaco.Range(line, 1, line, 1),
-        options: {
-          glyphMarginClassName: "checkboxGlyph",
-          glyphMarginHoverMessage: { value: "Locked line" },
-          className: "locked-line-highlight",
-          isWholeLine: true,
-          stickiness:
-            monaco.editor.TrackedRangeStickiness.GrowsOnlyWhenTypingBefore,
-        },
-      });
+    // Add decorations for locked lines
+    Array.from(lockedLines).forEach((line) => {
+      // Basic check to ensure line number is valid
+      if (line > 0 && line <= editor.getModel().getLineCount()) {
+        decorations.push({
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            glyphMarginClassName: "lockedLineGlyph",
+            glyphMarginHoverMessage: { value: "Locked line" },
+            isWholeLine: true,
+            className: "locked-line-highlight",
+          },
+        });
+      }
     });
 
-    // Add decorations for eye lines
-    validEyeLines.forEach((line) => {
-      newDecs.push({
-        range: new monaco.Range(line, 1, line, 1),
-        options: {
-          glyphMarginClassName: "eyeGlyph",
-          glyphMarginHoverMessage: { value: "Hidden line" },
-          className: "hidden-line-highlight",
-          isWholeLine: true,
-          stickiness:
-            monaco.editor.TrackedRangeStickiness.GrowsOnlyWhenTypingBefore,
-        },
-      });
-    });
-
-    // Add hover decoration for lines that don't have icons
-    if (
-      hoveredLine &&
-      !validCheckedLines.includes(hoveredLine) &&
-      !validEyeLines.includes(hoveredLine)
-    ) {
-      newDecs.push({
+    // Add hover decoration
+    if (hoveredLine && !lockedLines.has(hoveredLine)) {
+      decorations.push({
         range: new monaco.Range(hoveredLine, 1, hoveredLine, 1),
         options: {
           glyphMarginClassName: "hoverGlyph",
@@ -210,76 +238,33 @@ export default function CodeEditor({
       });
     }
 
-    // apply them, replacing the old ones
-    const newIds = editor.deltaDecorations(decorIds, newDecs);
-    setDecorIds(newIds);
-  }, [checkedLines, eyeLines, hoveredLine]);
+    const newDecorationIds = editor.deltaDecorations(decorIds, decorations);
+    setDecorIds(newDecorationIds);
+  }, [isEditorReady, lockedLines, hoveredLine, editorRef]);
 
-  // Styles for all the glyph icons
+  // useEffect for injecting styles
   useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = `
-      .monaco-editor .checkboxGlyph {
-        background: url('./1.svg') no-repeat center center;
-        background-size: 14px;
-        cursor: pointer;
-        margin-left: 2px;
-        width: 20px !important;
-        height: 20px !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-      }
-      
-      .monaco-editor .locked-line-highlight {
-        background-color: rgba(217, 72, 15, 0.4);
-      }
-      
-      .monaco-editor .eyeGlyph {
-        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>') no-repeat center center;
-        background-size: 14px;
-        cursor: pointer;
-        margin-left: 2px;
-        width: 20px !important;
-        height: 20px !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-      }
-      .monaco-editor .eyeGlyph:hover {
-        background-color: rgba(59, 130, 246, 0.6);
-      }
-      .monaco-editor .hidden-line-highlight {
-        background-color: rgba(59, 130, 246, 0.3);
-      }
-      
-      .monaco-editor .hoverGlyph {
-        background: url('./2.svg') no-repeat center center;
-        background-size: 12px;
-        cursor: pointer;
-        margin-left: 2px;
-        width: 20px !important;
-        height: 20px !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        opacity: 0.5;
-      }
-      .monaco-editor .hoverGlyph:hover {
-        background-color: rgba(156, 163, 175, 0.3);
-        opacity: 1;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
+    const styleId = "monaco-editor-glyph-styles";
+    if (document.getElementById(styleId)) return;
 
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+       .monaco-editor .lockedLineGlyph { background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23d9480f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>') no-repeat center center; background-size: 14px; cursor: pointer; }
+       .monaco-editor .locked-line-highlight { background-color: rgba(217, 72, 15, 0.2); }
+       .monaco-editor .hoverGlyph { background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>') no-repeat center center; background-size: 14px; cursor: pointer; opacity: 0.6; }
+     `;
+    document.head.appendChild(style);
+    return () => {
+      const styleElement = document.getElementById(styleId);
+      if (styleElement) {
+        styleElement.remove();
+      }
+    };
+  }, []);
   // Code completion
   useEffect(() => {
-    if (!monaco || !editor) return;
+    if (!monaco || !editorRef.current) return;
     let provider;
 
     if (true) {
@@ -560,125 +545,23 @@ export default function CodeEditor({
     }
 
     // locks ui -----------------------------
-  }, [monaco, editor, language]);
-
-  // Clean up invalid locked lines when content changes  // Handle content changes and line number updates
-  useEffect(() => {
-    if (!editor || !monaco) return;
-
-    if (!model) return;
-
-    // Handle model content changes
-    const disposable = model.onDidChangeContent((e) => {
-      const changes = e.changes;
-
-      // Update checked lines based on line number changes
-      setCheckedLines((prev) => {
-        const next = new Set();
-
-        prev.forEach((line) => {
-          let newLine = line;
-
-          // Apply each change to determine new line numbers
-          for (const change of changes) {
-            if (change.range.startLineNumber <= line) {
-              const lineDelta =
-                change.text.split("\n").length -
-                1 -
-                (change.range.endLineNumber - change.range.startLineNumber);
-
-              if (line >= change.range.startLineNumber) {
-                newLine += lineDelta;
-              }
-            }
-          }
-
-          // Only keep the line if it still exists
-          if (newLine > 0 && newLine <= model.getLineCount()) {
-            next.add(newLine);
-          }
-        });
-
-        return next;
-      });
-
-      // Update eye lines the same way
-      setEyeLines((prev) => {
-        const next = new Set();
-
-        prev.forEach((line) => {
-          let newLine = line;
-
-          // Apply each change to determine new line numbers
-          for (const change of changes) {
-            if (change.range.startLineNumber <= line) {
-              const lineDelta =
-                change.text.split("\n").length -
-                1 -
-                (change.range.endLineNumber - change.range.startLineNumber);
-
-              if (line >= change.range.startLineNumber) {
-                newLine += lineDelta;
-              }
-            }
-          }
-
-          // Only keep the line if it still exists
-          if (newLine > 0 && newLine <= model.getLineCount()) {
-            next.add(newLine);
-          }
-        });
-
-        return next;
-      });
-    });
-
-    return () => disposable.dispose();
-  }, [editor, monaco]);
-
-  // Clean up invalid lines when content changes
-  useEffect(() => {
-    if (!editor) return;
-    if (!model) return;
-
-    const totalLines = model.getLineCount();
-    setCheckedLines((prev) => {
-      const next = new Set([...prev].filter((line) => line <= totalLines));
-      return next.size === prev.size ? prev : next;
-    });
-    setEyeLines((prev) => {
-      const next = new Set([...prev].filter((line) => line <= totalLines));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [val, editor]);
+  }, [monaco, editorRef.current, language]);
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-800/40">
-      {/* Button to add eye icons to selection */}
-      <div className="p-2 border-b border-zinc-700 bg-zinc-900/50 flex justify-end">
-        <button
-          type="button"
-          onClick={addEyeToSelection}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-        >
-          <Eye size={16} />
-          Hide Selection
-        </button>
-      </div>
-
-      <Editor
-        height="600px"
-        language={language}
-        theme="vs-dark"
-        onMount={handleEditorMount}
-        options={{
-          minimap: { enabled: false },
-          scrollBeyondLastLine: true,
-          fontSize: 15,
-          lineNumbers: "on",
-          lineNumbersMinChars: 3,
-        }}
-      />
-    </div>
+    <Editor
+      height="100%"
+      language={language}
+      theme="vs-dark"
+      defaultValue={starterCode || ""}
+      onMount={handleEditorMount}
+      options={{
+        minimap: { enabled: false },
+        fontSize: 15,
+        lineNumbers: "on",
+        lineNumbersMinChars: 3,
+        scrollBeyondLastLine: true,
+        wordWrap: "on",
+      }}
+    />
   );
 }
