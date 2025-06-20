@@ -53,7 +53,8 @@ export const CodingInterface = ({ session, id }) => {
     try {
       console.log("Fetching assignment data...", id);
 
-      const data = await getAssignmentDetails(id);
+      const val = 14;
+      const data = await getAssignmentDetails(val);
       setAssignmentData(data);
     } catch (error) {
       console.error("Error fetching assignment data:", error);

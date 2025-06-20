@@ -46,7 +46,7 @@ export async function getAssignmentsData(student_id) {
     nextStartTime: nextEvent?.start_date || null, // Send the string or null
   };
 }
-export const getAssignmentDetails = async ({ assignment_id }) => {
+export const getAssignmentDetails = async (assignment_id) => {
   const supabase = await createClient();
   console.log("Fetching assignment details:", assignment_id);
   if (!assignment_id) {
