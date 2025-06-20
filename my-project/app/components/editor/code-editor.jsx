@@ -9,7 +9,6 @@ import {
   pythonKeywords,
   extraPythonModules,
   extraJavaClasses,
-  role,
 } from "./constants";
 import { PenOff, Eye } from "lucide-react";
 import { addToast } from "@heroui/react";
@@ -21,6 +20,8 @@ export default function CodeEditor({
   role,
   onLockedLinesChange,
   starterCode,
+  height,
+  disableMenu,
 }) {
   const monacoRef = useRef(null);
   const monaco = useMonaco();
@@ -56,8 +57,21 @@ export default function CodeEditor({
       editor.updateOptions({
         glyphMargin: true,
         lineNumbers: "on",
+        contextmenu: disableMenu ? false : true,
       });
+      editor.onKeyDown((e) => {
+        // diasble ctrl option
+        const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+        const isPasteKey = e.keyCode === monaco.KeyCode.KeyV;
+        const isCopyKey = e.keyCode === monaco.KeyCode.KeyC;
+        const isCutKey = e.keyCode === monaco.KeyCode.KeyX;
 
+        if (isCtrlOrCmd && (isPasteKey || isCopyKey || isCutKey)) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log("Copy/Paste/Cut keyboard shortcuts have been disabled.");
+        }
+      });
       // Dispose of old listeners if they exist
       if (contentChangeListener.current)
         contentChangeListener.current.dispose();
@@ -67,7 +81,6 @@ export default function CodeEditor({
       keyDownListener.current = editor.onKeyDown((e) => {
         const position = editor.getPosition();
         if (!position) return;
-
         // Check for "Enter" on a locked line specifically for students
         if (
           role === "student" &&
@@ -549,7 +562,7 @@ export default function CodeEditor({
 
   return (
     <Editor
-      height="100%"
+      height={height || "100%"}
       language={language}
       theme="vs-dark"
       defaultValue={starterCode || ""}

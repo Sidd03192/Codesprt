@@ -46,6 +46,7 @@ import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
 export default function CreateAssignmentPage({ session, classes, setOpen }) {
   const [formData, setFormData] = React.useState({
     classId: "",
+    className: "",
     title: "",
     description: "",
 
@@ -98,11 +99,13 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
 
   const selectedClass = classes?.find((c) => c.id === formData.classId) || null;
 
-  const handleClassChange = useCallback((classId) => {
+  const handleClassChange = useCallback((classId, className) => {
     // updates class Id
     setFormData((prev) => ({
       ...prev,
       classId,
+      className,
+
       selectedStudentIds: [],
     }));
   });
@@ -133,19 +136,6 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
     }));
   };
 
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-
-    // Add click handler for line locking
-    editor.onMouseDown((e) => {
-      // Check if click is in the line number area (gutter)
-      if (e.target.type === 2) {
-        // Monaco editor gutter area type
-        const lineNumber = e.target.position.lineNumber;
-        handleToggleLockLine(lineNumber);
-      }
-    });
-  };
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
 
@@ -259,6 +249,8 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
               assignment_id: newAssignmentId,
               student_id: studentId,
               start_date: startDate.toString(),
+              title: formData.title,
+              due_date: dueDate.toString(),
             })
           );
 
@@ -424,12 +416,18 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
                 label="Class"
                 placeholder="Select a class"
                 selectedKeys={formData.classId ? [formData.classId] : []}
-                onChange={(e) => handleClassChange(e.target.value)}
+                onChange={(e) =>
+                  handleClassChange(e.target.value, e.target.name)
+                }
               >
                 {classes &&
                   classes.length > 0 &&
                   classes.map((classInfo) => (
-                    <SelectItem key={classInfo.id} value={classInfo.id}>
+                    <SelectItem
+                      key={classInfo.id}
+                      value={classInfo.id}
+                      name={classInfo.name}
+                    >
                       {classInfo.name}
                     </SelectItem>
                   ))}
@@ -567,6 +565,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
               </p>
 
               <CodeEditor
+                height={"600px"}
                 language={selectedLanguage || "java"}
                 editorRef={editorRef}
                 role="teacher"

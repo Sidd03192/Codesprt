@@ -1,114 +1,141 @@
 import React from "react";
-import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Input, Chip, Progress } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Button,
+  Input,
+  Chip,
+  Progress,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 export const StudentGrades = () => {
   const [selectedTerm, setSelectedTerm] = React.useState("current");
   const [searchValue, setSearchValue] = React.useState("");
-  
+
   const terms = [
     { id: "current", name: "Current Term (Fall 2023)" },
     { id: "spring2023", name: "Spring 2023" },
     { id: "fall2022", name: "Fall 2022" },
-    { id: "spring2022", name: "Spring 2022" }
+    { id: "spring2022", name: "Spring 2022" },
   ];
-  
+
   const courses = [
-    { 
-      id: 1, 
-      name: "Mathematics 101", 
-      instructor: "Dr. Robert Chen", 
+    {
+      id: 1,
+      name: "Mathematics 101",
+      instructor: "Dr. Robert Chen",
       credits: 4,
-      currentGrade: "A-", 
+      currentGrade: "A-",
       gradePoints: 3.7,
       assignments: [
         { name: "Quiz 1", grade: "B+", weight: 10 },
         { name: "Midterm", grade: "A", weight: 30 },
         { name: "Problem Set 1-3", grade: "A-", weight: 15 },
         { name: "Problem Set 4-5", grade: "B+", weight: 15 },
-        { name: "Final Project", grade: "In Progress", weight: 30 }
-      ]
+        { name: "Final Project", grade: "In Progress", weight: 30 },
+      ],
     },
-    { 
-      id: 2, 
-      name: "Science 202", 
-      instructor: "Dr. Sarah Williams", 
+    {
+      id: 2,
+      name: "Science 202",
+      instructor: "Dr. Sarah Williams",
       credits: 4,
-      currentGrade: "B+", 
+      currentGrade: "B+",
       gradePoints: 3.3,
       assignments: [
         { name: "Lab Report 1", grade: "A-", weight: 15 },
         { name: "Quiz 1", grade: "B", weight: 10 },
         { name: "Midterm", grade: "B+", weight: 25 },
         { name: "Lab Report 2", grade: "B+", weight: 15 },
-        { name: "Final Exam", grade: "In Progress", weight: 35 }
-      ]
+        { name: "Final Exam", grade: "In Progress", weight: 35 },
+      ],
     },
-    { 
-      id: 3, 
-      name: "English 303", 
-      instructor: "Prof. James Miller", 
+    {
+      id: 3,
+      name: "English 303",
+      instructor: "Prof. James Miller",
       credits: 3,
-      currentGrade: "A", 
+      currentGrade: "A",
       gradePoints: 4.0,
       assignments: [
         { name: "Essay 1", grade: "A", weight: 20 },
         { name: "Participation", grade: "A", weight: 10 },
         { name: "Midterm Paper", grade: "A", weight: 30 },
         { name: "Presentation", grade: "A-", weight: 15 },
-        { name: "Final Paper", grade: "In Progress", weight: 25 }
-      ]
+        { name: "Final Paper", grade: "In Progress", weight: 25 },
+      ],
     },
-    { 
-      id: 4, 
-      name: "History 101", 
-      instructor: "Dr. Emily Thompson", 
+    {
+      id: 4,
+      name: "History 101",
+      instructor: "Dr. Emily Thompson",
       credits: 3,
-      currentGrade: "B", 
+      currentGrade: "B",
       gradePoints: 3.0,
       assignments: [
         { name: "Quiz 1", grade: "B-", weight: 10 },
         { name: "Research Paper", grade: "B+", weight: 25 },
         { name: "Midterm", grade: "B", weight: 25 },
         { name: "Presentation", grade: "B", weight: 15 },
-        { name: "Final Exam", grade: "In Progress", weight: 25 }
-      ]
+        { name: "Final Exam", grade: "In Progress", weight: 25 },
+      ],
     },
-    { 
-      id: 5, 
-      name: "Art & Design", 
-      instructor: "Prof. Lisa Chen", 
+    {
+      id: 5,
+      name: "Art & Design",
+      instructor: "Prof. Lisa Chen",
       credits: 3,
-      currentGrade: "A-", 
+      currentGrade: "A-",
       gradePoints: 3.7,
       assignments: [
         { name: "Project 1", grade: "A", weight: 20 },
         { name: "Sketch Portfolio", grade: "A-", weight: 15 },
         { name: "Midterm Project", grade: "A-", weight: 30 },
         { name: "Participation", grade: "B+", weight: 10 },
-        { name: "Final Portfolio", grade: "In Progress", weight: 25 }
-      ]
-    }
+        { name: "Final Portfolio", grade: "In Progress", weight: 25 },
+      ],
+    },
   ];
 
-  const filteredCourses = courses.filter(course => {
-    if (searchValue && !course.name.toLowerCase().includes(searchValue.toLowerCase())) {
+  const filteredCourses = courses.filter((course) => {
+    if (
+      searchValue &&
+      !course.name.toLowerCase().includes(searchValue.toLowerCase())
+    ) {
       return false;
     }
     return true;
   });
 
   const getGradeColor = (grade) => {
-    if (grade?.startsWith('A')) return "success";
-    if (grade?.startsWith('B')) return "primary";
-    if (grade?.startsWith('C')) return "warning";
+    if (grade?.startsWith("A")) return "success";
+    if (grade?.startsWith("B")) return "primary";
+    if (grade?.startsWith("C")) return "warning";
     if (grade === "In Progress") return "default";
     return "danger";
   };
-  
+
   // Calculate GPA
-  const totalCredits = filteredCourses.reduce((sum, course) => sum + course.credits, 0);
-  const totalGradePoints = filteredCourses.reduce((sum, course) => sum + (course.gradePoints * course.credits), 0);
+  const totalCredits = filteredCourses.reduce(
+    (sum, course) => sum + course.credits,
+    0
+  );
+  const totalGradePoints = filteredCourses.reduce(
+    (sum, course) => sum + course.gradePoints * course.credits,
+    0
+  );
   const gpa = totalGradePoints / totalCredits;
 
   // Expanded course state
@@ -130,7 +157,9 @@ export const StudentGrades = () => {
           </div>
           <div className="mt-4 md:mt-0 text-center md:text-right">
             <h2 className="text-3xl font-bold">{gpa.toFixed(2)}</h2>
-            <p className="text-sm text-foreground-500">{totalCredits} Credits</p>
+            <p className="text-sm text-foreground-500">
+              {totalCredits} Credits
+            </p>
           </div>
         </CardBody>
       </Card>
@@ -160,11 +189,15 @@ export const StudentGrades = () => {
             />
             <Dropdown>
               <DropdownTrigger>
-                <Button variant="flat" endContent={<Icon icon="lucide:chevron-down" />}>
-                  {terms.find(t => t.id === selectedTerm)?.name || "Current Term"}
+                <Button
+                  variant="flat"
+                  endContent={<Icon icon="lucide:chevron-down" />}
+                >
+                  {terms.find((t) => t.id === selectedTerm)?.name ||
+                    "Current Term"}
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu 
+              <DropdownMenu
                 aria-label="Term selection"
                 onAction={(key) => setSelectedTerm(key)}
                 selectedKeys={[selectedTerm]}
@@ -178,7 +211,7 @@ export const StudentGrades = () => {
           </div>
 
           <div className="space-y-4">
-            {filteredCourses.map((course) => (
+            {/* {filteredCourses.map((course) => (
               <Card 
                 key={course.id} 
                 className="border border-divider overflow-hidden"
@@ -255,7 +288,7 @@ export const StudentGrades = () => {
                   )}
                 </CardBody>
               </Card>
-            ))}
+            ))} */}
           </div>
         </CardBody>
       </Card>
