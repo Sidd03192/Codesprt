@@ -2,44 +2,17 @@
 
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { supabase } from "../supabase-client";
+import { createClient } from "../../utils/supabase/server";
 // This action fetches assignments for a given student.
 // It returns both the assignments that are already active
 // and the single next assignment that is scheduled to start.
 export async function getAssignmentsData(student_id) {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_API_KEY,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-      },
-    }
-  );
-
   // const user = await supabase.auth.getUser(); // extra security.
   // if (user.error) {
   //   console.error("Error fetching user:", user.error);
   //   return { error: "Could not fetch user." };
   // }
-
+  const supabase = await createClient();
   // 1. Get all assignments that are already visible (this is safe to send)
   const { data: visibleAssignments, error: visibleError } = await supabase
     .from("assignment_students")
@@ -74,8 +47,12 @@ export async function getAssignmentsData(student_id) {
   };
 }
 export const getAssignmentDetails = async ({ assignment_id }) => {
+  const supabase = await createClient();
   console.log("Fetching assignment details:", assignment_id);
-  if (!assignment_id) return;
+  if (!assignment_id) {
+    console.error("No assignment ID provided, got null or undefined.");
+    return;
+  }
   const { data, error } = await supabase
     .from("assignments")
     .select(
@@ -92,4 +69,5 @@ export const getAssignmentDetails = async ({ assignment_id }) => {
 
 export const gradeAssignment = async ({ assignment_data }) => {
   // find an run testcases on the assignment.
+  const supabase = await createClient();
 };
