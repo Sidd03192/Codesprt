@@ -18,8 +18,7 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { Placeholder } from '@tiptap/extensions'
 import Heading from '@tiptap/extension-heading';
 import js from 'highlight.js/lib/languages/javascript'
-import TextStyle from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
+import {Color, TextStyle} from '@tiptap/extension-text-style';
 
 import { all, createLowlight } from 'lowlight';
 import './editor-styles.css'; // Import highlight.js theme (see below)
