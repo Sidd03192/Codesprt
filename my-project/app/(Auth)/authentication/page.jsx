@@ -7,6 +7,7 @@ import { Button, Input, Checkbox, Link, Form, Divider, Alert, Card } from "@hero
 import { Icon } from "@iconify/react";
 import { Spinner } from '@heroui/react';
 import Image from "next/image";
+
 export default function AuthForm() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -15,12 +16,13 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [alertType, setAlertType] = useState("success"); // "success" | "danger"
-const [alertTitle, setAlertTitle] = useState("");
-const [alertDescription, setAlertDescription] = useState("");
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertDescription, setAlertDescription] = useState("");
+  const [role, setRole] = useState("student");
 
   const description = "We've sent you a confirmation email. Please check your inbox to verify your account.";
   const title = "Account Created Successfully!";
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
 
@@ -36,14 +38,16 @@ const [alertDescription, setAlertDescription] = useState("");
       setAlertTitle("Sign Up Failed");
       setAlertDescription(signUpError.message || "An error occurred during sign up.");
       setIsVisible(true);
-    } else {
+    } 
+    else {
       setAlertType("success");
       setAlertTitle("Account Created Successfully!");
       setAlertDescription("We've sent you a confirmation email. Please check your inbox to verify your account.");
       setIsVisible(true);
       updateDatabase(data.user);
     }
-  } else {
+  } 
+  else {
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -68,11 +72,10 @@ const [alertDescription, setAlertDescription] = useState("");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`, // or wherever you want
+        redirectTo: `${window.location.origin}/${role === "teacher" ? "dashboard" : "student-dashboard"}`, // or wherever you want
       },
     });
-      updateDatabase(data.user);
-
+    updateDatabase(data.user);
     if (error) {
       console.error("OAuth Sign-in Error:", error.message);
       console.error("Error signing in:", signInError.message);
@@ -95,7 +98,7 @@ const [alertDescription, setAlertDescription] = useState("");
       const { data, error } = await supabase
         .from('profiles')
         .insert([
-          { id: user.id, email: user.email, created_at: new Date(), role:"teacher"  }
+          { id: user.id, email: user.email, created_at: new Date(), role: role  }
         ]);
 
       if (error) {
@@ -219,6 +222,22 @@ const [alertDescription, setAlertDescription] = useState("");
               </Link>
             )}
           </div>
+          {isSignUp && (
+          <div className="flex justify-center py-2">
+    <div className="flex items-center space-x-2 border rounded-full px-2 py-1 bg-gray-100">
+      <span className={`text-sm px-2 py-1 rounded-full cursor-pointer transition ${
+        role === "student" ? "bg-primary text-white" : "text-gray-600"
+      }`} onClick={() => setRole("student")}>
+        Student
+      </span>
+      <span className={`text-sm px-2 py-1 rounded-full cursor-pointer transition ${
+        role === "teacher" ? "bg-primary text-white" : "text-gray-600"
+      }`} onClick={() => setRole("teacher")}>
+        Teacher
+      </span>
+    </div>
+  </div>
+)}
           <Button className="w-full" color="primary" type="submit" loading={loading} spinner={<Spinner/>}>
             {isSignUp ? "Sign Up" : "Sign In"}
           </Button>
