@@ -3,6 +3,7 @@
 "use server";
 
 import { createClient } from "../../utils/supabase/server";
+import { executeCode } from "../components/editor/api";
 // This action fetches assignments for a given student.
 // It returns both the assignments that are already active
 // and the single next assignment that is scheduled to start.
@@ -69,9 +70,42 @@ export const getAssignmentDetails = async (assignment_id) => {
   }
 };
 
-export const gradeAssignment = async ({ assignment_data }) => {
-  // find an run testcases on the assignment.
+
+// check for safety purposes
+export const gradeAssignment = async ({ assignment_data, language, testcases }) => {
   const supabase = await createClient();
+  const userCode = assignment_data.submitted_code;
+
+  // Helper: Wraps code with test cases
+  const wrapCodeWithTests = (userCode, testCases) => {
+    const testCode = testCases
+      .map(({ methodName, input, expectedOutput, name }) => {
+        return `
+try {
+  const result = ${methodName}(${input});
+  if (String(result) !== String(${JSON.stringify(expectedOutput)})) {
+    console.log("❌ ${name} failed. Expected: ${expectedOutput}, Got: " + result);
+  } else {
+    console.log("✅ ${name} passed.");
+  }
+} catch (e) {
+  console.log("❌ ${name} errored: " + e.message);
+}
+        `.trim();
+      })
+      .join("\n\n");
+
+    return `${userCode}\n\n${testCode}`;
+  };
+
+  const codeToExecute = wrapCodeWithTests(userCode, testcases);
+
+  const result = await executeCode(language, codeToExecute);
+
+  // Optional: You can also parse and score results here
+  console.log("Final Output:\n", result.run.stdout);
+
+  return result.run; // or process to extract score
 };
 
 export const saveAssignment = async (

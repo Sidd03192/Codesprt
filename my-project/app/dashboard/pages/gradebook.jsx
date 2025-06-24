@@ -16,7 +16,7 @@ import {
   PopoverContent,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { AddGradePanel } from "./AddGradePanel";
+import { AddGradePanel } from "./AddGradePanel.jsx";
 
 export const Gradebook = () => {
   const [selectedClass, setSelectedClass] = React.useState("all");

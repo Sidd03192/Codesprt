@@ -5,7 +5,6 @@ import { Icon } from "@iconify/react";
 export const StudentCourses = () => {
   const [selected, setSelected] = React.useState("current");
   const [searchValue, setSearchValue] = React.useState("");
-  
   const courses = [
     { 
       id: 1, 

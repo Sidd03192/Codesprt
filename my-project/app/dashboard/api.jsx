@@ -1,6 +1,6 @@
 import { supabase } from ".././supabase-client";
 import { useToast } from "@heroui/react";
-export const insertUserIfNew = async () => {
+export const insertUserIfNew = async (role) => {
   const {
     data: { user },
     error,
@@ -16,7 +16,7 @@ export const insertUserIfNew = async () => {
     // Insert into users table
     const { data, error: dbError } = await supabase
       .from("users")
-      .insert([{ id: user.id, email: user.email, role: "teacher" }]);
+      .insert([{ id: user.id, email: user.email, role: role }]);
 
     if (dbError) {
       console.error("Error inserting user:", dbError.message);

@@ -16,6 +16,7 @@ import {
 import { Icon } from "@iconify/react";
 import { Spinner } from "@heroui/react";
 import Image from "next/image";
+
 export default function AuthForm() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -26,6 +27,7 @@ export default function AuthForm() {
   const [alertType, setAlertType] = useState("success"); // "success" | "danger"
   const [alertTitle, setAlertTitle] = useState("");
   const [alertDescription, setAlertDescription] = useState("");
+  const [role, setRole] = useState("student");
 
   const description =
     "We've sent you a confirmation email. Please check your inbox to verify your account.";
@@ -33,6 +35,9 @@ export default function AuthForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
     if (isSignUp) {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -62,6 +67,26 @@ export default function AuthForm() {
         email,
         password,
       });
+    if (signUpError) {
+      console.error("Error signing up:", signUpError.message);
+      setAlertType("danger");
+      setAlertTitle("Sign Up Failed");
+      setAlertDescription(signUpError.message || "An error occurred during sign up.");
+      setIsVisible(true);
+    } 
+    else {
+      setAlertType("success");
+      setAlertTitle("Account Created Successfully!");
+      setAlertDescription("We've sent you a confirmation email. Please check your inbox to verify your account.");
+      setIsVisible(true);
+      updateDatabase(data.user);
+    }
+  } 
+  else {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
       if (signInError) {
         console.error("Error signing in:", signInError.message);
@@ -80,30 +105,27 @@ export default function AuthForm() {
   };
 
   const signInWithGoogle = async () => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`, // or wherever you want
-        },
-      });
-      updateDatabase(data.user);
-
-      if (error) {
-        console.error("OAuth Sign-in Error:", error.message);
-        console.error("Error signing in:", signInError.message);
-        setAlertType("danger");
-        setAlertTitle("Sign In Failed");
-        setAlertDescription(
-          signInError.message || "An error occurred during sign in."
-        );
-        setIsVisible(true);
-      } else {
-        console.log("OAuth redirecting…", data);
-      }
-    } catch (err) {
-      console.error("Unexpected error during Google Sign-in:", err.message);
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/${role === "teacher" ? "dashboard" : "student-dashboard"}`, // or wherever you want
+      },
+    });
+    updateDatabase(data.user);
+    if (error) {
+      console.error("OAuth Sign-in Error:", error.message);
+      console.error("Error signing in:", signInError.message);
+      setAlertType("danger");
+      setAlertTitle("Sign In Failed");
+      setAlertDescription(signInError.message || "An error occurred during sign in.");
+      setIsVisible(true);
+    } else {
+      console.log("OAuth redirecting…", data);
     }
+  } catch (err) {
+    console.error("Unexpected error during Google Sign-in:", err.message);
+  }
   };
 
   const updateDatabase = async (user) => {
@@ -112,12 +134,7 @@ export default function AuthForm() {
       const { data, error } = await supabase
         .from("profiles")
         .insert([
-          {
-            id: user.id,
-            email: user.email,
-            created_at: new Date(),
-            role: "teacher",
-          },
+          { id: user.id, email: user.email, created_at: new Date(), role: role  }
         ]);
 
       if (error) {
@@ -254,6 +271,52 @@ export default function AuthForm() {
               {isSignUp ? "Sign Up" : "Sign In"}
             </Button>
           </Form>
+            label="Password"
+            name="password"
+            placeholder="Enter your password"
+            type={isVisible ? "text" : "password"}
+            variant="bordered"
+          />
+          {isSignUp && (
+            <Input
+              isRequired
+              label="Confirm Password"
+              name="confirmPassword"
+              placeholder="Confirm your password"
+              type={isVisible ? "text" : "password"}
+              variant="bordered"
+            />
+          )}
+          <div className="flex w-full items-center justify-between px-1 py-2 ">
+            <Checkbox name="remember" size="sm">
+              Remember me
+            </Checkbox>
+            {!isSignUp && (
+              <Link className="text-default-500" href="#" size="sm">
+                Forgot password?
+              </Link>
+            )}
+          </div>
+          {isSignUp && (
+          <div className="flex justify-center py-2">
+    <div className="flex items-center space-x-2 border rounded-full px-2 py-1 bg-gray-100">
+      <span className={`text-sm px-2 py-1 rounded-full cursor-pointer transition ${
+        role === "student" ? "bg-primary text-white" : "text-gray-600"
+      }`} onClick={() => setRole("student")}>
+        Student
+      </span>
+      <span className={`text-sm px-2 py-1 rounded-full cursor-pointer transition ${
+        role === "teacher" ? "bg-primary text-white" : "text-gray-600"
+      }`} onClick={() => setRole("teacher")}>
+        Teacher
+      </span>
+    </div>
+  </div>
+)}
+          <Button className="w-full" color="primary" type="submit" loading={loading} spinner={<Spinner/>}>
+            {isSignUp ? "Sign Up" : "Sign In"}
+          </Button>
+        </Form>
 
           <div className="flex items-center gap-4 py-2">
             <Divider className="flex-1" />

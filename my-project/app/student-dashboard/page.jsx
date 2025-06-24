@@ -18,6 +18,8 @@ import { StudentAssignments } from "./assignments";
 import { StudentGrades } from "./grades";
 import { StudentCourses } from "./courses";
 import { getAssignmentsData } from "./api";
+import { insertUserIfNew } from "../dashboard/api";
+
 
 export default function StudentDashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
@@ -47,6 +49,11 @@ export default function StudentDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    insertUserIfNew("student");
+  }, []);
+
+  
   const handleRefresh = () => {
     console.log("Refreshing assignments...");
     // include logic to put a cooldown on the refresh button

@@ -109,7 +109,7 @@ export default function Dashboard() {
   // Add active page state
   const [activePage, setActivePage] = React.useState("overview");
   useEffect(() => {
-    insertUserIfNew();
+    insertUserIfNew("teacher");
   }, []);
   // For mobile view
   const isMobile = React.useMemo(() => {

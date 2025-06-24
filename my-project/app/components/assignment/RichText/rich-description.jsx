@@ -4,23 +4,24 @@
 
 // future features.: Include better table ui in the description.
 
-import React from "react";
 import { useEffect } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Superscript from "@tiptap/extension-superscript";
-import Image from "@tiptap/extension-image";
-import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
-import ListItem from "@tiptap/extension-list-item";
-import BulletList from "@tiptap/extension-bullet-list";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { Placeholder } from "@tiptap/extensions";
-import Heading from "@tiptap/extension-heading";
-import js from "highlight.js/lib/languages/javascript";
+import React from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Superscript from '@tiptap/extension-superscript';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import BulletList from '@tiptap/extension-bullet-list';
+import ListItem from '@tiptap/extension-list-item';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Placeholder } from '@tiptap/extensions'
+import Heading from '@tiptap/extension-heading';
+import js from 'highlight.js/lib/languages/javascript'
+import {Color, TextStyle} from '@tiptap/extension-text-style';
 
-import { all, createLowlight } from "lowlight";
-import "./editor-styles.css"; // Import highlight.js theme (see below)
+import { all, createLowlight } from 'lowlight';
+import './editor-styles.css'; // Import highlight.js theme (see below)
 
 const lowlight = createLowlight(all); // You can also use `common` or individual
 lowlight.register("javascript", js);
@@ -87,6 +88,10 @@ export const RichTextEditor = ({ editorRef }) => {
           class: "prose prose-slate dark:prose-invert",
         },
       }),
+      TextStyle,
+    Color.configure({
+      types: ['textStyle'],
+    }),
     ],
 
     content: "",
