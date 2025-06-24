@@ -1,7 +1,20 @@
 "use client";
 import React, { useState, useRef, useCallback } from "react";
 import { generateHTML } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Superscript from '@tiptap/extension-superscript';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import BulletList from '@tiptap/extension-bullet-list';
+import ListItem from '@tiptap/extension-list-item';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Placeholder } from '@tiptap/extensions'
+import { all, createLowlight } from 'lowlight';
+import js from 'highlight.js/lib/languages/javascript'
+import {Color, TextStyle} from '@tiptap/extension-text-style';
+
+import Heading from '@tiptap/extension-heading';
 import {
   Play,
   RotateCcw,
@@ -30,6 +43,7 @@ import { supabase } from "../supabase-client";
 import Editor from "@monaco-editor/react";
 import { getAssignmentDetails, saveAssignment } from "./api";
 import { executeCode } from "../components/editor/api";
+import "../components/assignment/RichText/editor-styles.css"; // Import highlight.js theme
 import {
   Modal,
   ModalContent,
@@ -39,6 +53,7 @@ import {
   useDisclosure,
 } from "@heroui/react";
 import CodeEditor from "../components/editor/code-editor";
+import { RichTextEditor } from "../components/assignment/RichText/rich-description";
 
 
 export const CodingInterface = ({ session, id }) => {
@@ -53,6 +68,7 @@ export const CodingInterface = ({ session, id }) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [initialCode, setInitialCode] = useState("");
   const [formData, setFormData] = useState({
     submitted_code: "",
   });
@@ -86,6 +102,8 @@ export const CodingInterface = ({ session, id }) => {
       setIsLoading(true);
       const data = await getAssignmentDetails(id);
       setAssignmentData(data);
+      setInitialCode(data.code_template || "");
+      console.log("Initial code set:", data.code_template || "");
       console.log("Assignment data fetched:", data);
       setIsLoading(false);
     } catch (error) {
@@ -185,7 +203,19 @@ export const CodingInterface = ({ session, id }) => {
     []
   );
   const handleResetCode = () => {
-    editorRef.current?.setValue(assignment.codeTemplate);
+    if (initialCode) {
+      editorRef.current?.setValue(initialCode);
+    }
+    
+    else {
+        addToast({
+        title: "No initial code available",
+        description: "There is no initial code to reset to.",
+        duration: 3000,
+        color: "warning",
+        variant: "flat",
+      });
+    }
   };
   const [output, setOutput] = useState(null);
 
@@ -303,7 +333,70 @@ export const CodingInterface = ({ session, id }) => {
   }, [id, assignmentData, editorRef]);
 
 
-  const extensions = [StarterKit];
+const lowlight = createLowlight(all); // You can also use `common` or individual
+lowlight.register("javascript", js);
+  const extensions = [
+      StarterKit.configure({
+        bulletList: false,
+        codeBlock: false,
+        heading: false,
+      }),
+      Placeholder.configure({
+        placeholder: "Enter assignment guidelines",
+        showOnlyCurrent: true,
+        HTMLAttributes: {
+          class: "text-default-400 bg-red-500 italic",
+        },
+      }),
+
+      // Inline formatting
+      Underline,
+      Superscript,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: "text-primary underline cursor-pointer",
+        },
+      }),
+
+      // Images (base64 allowed)
+      Image.configure({
+        allowBase64: true,
+        HTMLAttributes: {
+          class: "rounded-md max-w-full",
+        },
+      }),
+
+      // Bullet list (we disabled it above, so re‐enable with custom styles)
+      BulletList.configure({
+        HTMLAttributes: {
+          class: "list-disc pl-6",
+        },
+      }),
+      ListItem,
+
+      // Code block with syntax highlighting
+      CodeBlockLowlight.configure({
+        lowlight,
+        defaultLanguage: "javascript",
+        languageClassPrefix: "language-",
+        HTMLAttributes: {
+          class:
+            "bg-slate-700 rounded-md p-4 my-2 font-mono text-sm overflow-x-auto",
+        },
+      }),
+
+      Heading.configure({
+        levels: [1, 2],
+        HTMLAttributes: {
+          class: "prose prose-slate dark:prose-invert",
+        },
+      }),
+      TextStyle,
+    Color.configure({
+      types: ['textStyle'],
+    }),
+    ]
   const convertJsonToHtml = (jsonContent) => {
     if (!jsonContent) {
       return "";
@@ -372,11 +465,15 @@ export const CodingInterface = ({ session, id }) => {
 
 
                   {/* The content that will overflow and cause scrolling */}
-                  <div className="space-y-4">
+                  {/* <div className="space-y-4">
                     <div
                       dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                     ></div>
-                  </div>
+                  </div> */}
+                  <RichTextEditor
+                                  className="md:col-span-2 bg-zinc-200 max-h-[400px]"
+                                  isRequired
+                                />
                 </div>
               </div>
             </div>

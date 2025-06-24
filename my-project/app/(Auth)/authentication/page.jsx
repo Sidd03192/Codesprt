@@ -236,7 +236,7 @@ export default function AuthForm() {
           <div className="flex flex-col items-center pb-6">
             <Image
               aria-hidden
-              src="/mascot.png"
+              src="/2.png"
               alt="Globe icon"
               width={90}
               height={90}
