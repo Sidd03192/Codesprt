@@ -35,6 +35,7 @@ export const StudentAssignments = ({
 }) => {
   const [searchValue, setSearchValue] = React.useState("");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
   const handleRefreshClick = () => {
     console.log("Refreshing assignments...");
     handleRefresh();
@@ -166,7 +167,13 @@ export const StudentAssignments = ({
                             </div>
                           </div>
                           <div className="flex items-center gap-2 self-end sm:self-center">
-                            <Button color="secondary" onPress={onOpen}>
+                            <Button
+                              color="secondary"
+                              onPress={() => {
+                                setSelectedAssignment(assignment.assignment_id);
+                                onOpen();
+                              }}
+                            >
                               <Icon icon="lucide:edit-3" className="mr-1" />
                               Start Assignment
                             </Button>
@@ -195,12 +202,19 @@ export const StudentAssignments = ({
                                         Close
                                       </Button>
                                       <Link
-                                        href={`/student-dashboard/assignments/${assignment.assignment_id}`}
+                                        key={assignment.assignment_id}
+                                        href={`/student-dashboard/assignments/${selectedAssignment}`}
                                       >
                                         <Button
                                           color="secondary"
                                           variant="solid"
                                           className="min-w-[120px]"
+                                          onPress={() =>
+                                            console.log(
+                                              "Starting assignment",
+                                              assignment.assignment_id
+                                            )
+                                          }
                                         >
                                           <Icon
                                             icon="lucide:edit-3"
