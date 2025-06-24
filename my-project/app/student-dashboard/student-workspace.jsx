@@ -40,6 +40,7 @@ import {
 } from "@heroui/react";
 import CodeEditor from "../components/editor/code-editor";
 
+
 export const CodingInterface = ({ session, id }) => {
   const [activeTab, setActiveTab] = useState("description");
   const [consoleTab, setConsoleTab] = useState("testcases");
@@ -55,6 +56,7 @@ export const CodingInterface = ({ session, id }) => {
   const [formData, setFormData] = useState({
     submitted_code: "",
   });
+
 
   const [assignmentData, setAssignmentData] = useState(null);
   const fetchDataForAssignment = useCallback(async () => {
@@ -91,14 +93,17 @@ export const CodingInterface = ({ session, id }) => {
     }
   }, []);
 
+
   const saveAssignmentData = async (isSubmit) => {
     const submit = isSubmit || false;
+
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
     const student_id = user?.id;
     console.log("Current user ID:", student_id);
+
 
     console.log("Attempting to save assignment data:", assignmentData);
     setSaving(true);
@@ -113,6 +118,7 @@ export const CodingInterface = ({ session, id }) => {
       if (submit) {
         console.log("Assignment data submitted successfully:", data);
 
+
         addToast({
           title: "Assignment Submitted",
           description: "Your assignment has been submitted successfully.",
@@ -121,6 +127,7 @@ export const CodingInterface = ({ session, id }) => {
         });
       } else {
         console.log("Assignment data saved successfully:", data);
+
 
         addToast({
           title: "Assignment Saved",
@@ -156,14 +163,18 @@ export const CodingInterface = ({ session, id }) => {
     setSaving(false);
   };
 
+
   React.useEffect(() => {
     fetchDataForAssignment();
   }, [fetchDataForAssignment, id]);
 
+
   const editorRef = React.useRef(null);
+
 
   const isDragging = useRef(false);
   const dragType = useRef("");
+
 
   const handleMouseDown = useCallback(
     (type) => (e) => {
@@ -178,14 +189,17 @@ export const CodingInterface = ({ session, id }) => {
   };
   const [output, setOutput] = useState(null);
 
+
   const runCode = async () => {
     const code = editorRef.current?.getValue?.();
     console.log("Running code..:", code);
+
 
     if (!code) {
       setOutput("Please select a language and write some code.");
       return;
     }
+
 
     try {
       // TODO edit teh selecedLanguage
@@ -193,6 +207,7 @@ export const CodingInterface = ({ session, id }) => {
       const startTime = performance.now();
       const result = await executeCode("java", code);
       const endTime = performance.now();
+
 
       const runResult = result.run || {};
       if (!runResult.stderr) {
@@ -204,6 +219,7 @@ export const CodingInterface = ({ session, id }) => {
         runResult.stderr ||
         "No output.";
 
+
       setOutput(finalOutput);
     } catch (error) {
       console.error(error);
@@ -214,8 +230,10 @@ export const CodingInterface = ({ session, id }) => {
     }
   };
 
+
   const handleMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
+
 
     if (dragType.current === "vertical") {
       const newWidth = (e.clientX / window.innerWidth) * 100;
@@ -232,10 +250,12 @@ export const CodingInterface = ({ session, id }) => {
     }
   }, []);
 
+
   const handleMouseUp = useCallback(() => {
     isDragging.current = false;
     dragType.current = "";
   }, []);
+
 
   React.useEffect(() => {
     document.addEventListener("mousemove", handleMouseMove);
@@ -246,10 +266,12 @@ export const CodingInterface = ({ session, id }) => {
     };
   }, [handleMouseMove, handleMouseUp]);
 
+
   const handleSubmit = () => {
     console.log("Submitting assignment...", assignmentData);
     // send code to backend
   };
+
 
   // // track user refreshing or going back.
   React.useEffect(() => {
@@ -261,7 +283,9 @@ export const CodingInterface = ({ session, id }) => {
         };
         console.log("Saving assignment data to session storage:", updatedData);
 
+
         sessionStorage.setItem(`assignment-${id}`, JSON.stringify(updatedData));
+
 
         event.preventDefault();
         // Modern browsers show a generic message and ignore the custom one.
@@ -269,12 +293,15 @@ export const CodingInterface = ({ session, id }) => {
       }
     };
 
+
     window.addEventListener("beforeunload", handleBeforeUnload);
+
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [id, assignmentData, editorRef]);
+
 
   const extensions = [StarterKit];
   const convertJsonToHtml = (jsonContent) => {
@@ -282,10 +309,12 @@ export const CodingInterface = ({ session, id }) => {
       return "";
     }
 
+
     // Use TipTap's utility to generate an HTML string from the JSON
     return generateHTML(jsonContent, extensions);
   };
   const descriptionHtml = convertJsonToHtml(assignmentData?.description);
+
 
   return (
     <form>
@@ -320,6 +349,7 @@ export const CodingInterface = ({ session, id }) => {
                 </Tabs>
               </CardHeader>
 
+
               {/* Problem Content */}
               {/* FIX #2: Remove h-full. The flex-1 class will now work correctly and is all you need. */}
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
@@ -339,6 +369,7 @@ export const CodingInterface = ({ session, id }) => {
                       <span className="text-yellow-400 text-sm">⭐ 85.2%</span>
                     </div>
                   </div>
+
 
                   {/* The content that will overflow and cause scrolling */}
                   <div className="space-y-4">
@@ -361,6 +392,7 @@ export const CodingInterface = ({ session, id }) => {
             className="text-white/30 group-hover:text-blue-400/70 transition-colors"
           />
         </div>
+
 
         {/* Right Panel - Code Editor and Console */}
         <Card
@@ -397,6 +429,7 @@ export const CodingInterface = ({ session, id }) => {
                   </Button>
                 </Tooltip>
 
+
                 <Button
                   isIconOnly
                   variant="light"
@@ -410,6 +443,7 @@ export const CodingInterface = ({ session, id }) => {
                 </Button>
               </div>
             </CardHeader>
+
 
             {/* Code Editor */}
             {isLoading ? (
@@ -431,6 +465,7 @@ export const CodingInterface = ({ session, id }) => {
             )}
           </div>
 
+
           {/* Horizontal Resize Handle */}
           <div
             className="h-1.5 bg-white/10 hover:bg-blue-400/50 cursor-row-resize transition-colors duration-200 flex items-center justify-center group"
@@ -438,6 +473,7 @@ export const CodingInterface = ({ session, id }) => {
           >
             <div className="w-8 h-0.5 bg-white/30 group-hover:bg-blue-400/70 rounded-full transition-colors"></div>
           </div>
+
 
           {/* Console Section */}
           <div
@@ -476,6 +512,7 @@ export const CodingInterface = ({ session, id }) => {
               </Tabs>
             </div>
 
+
             {/* Console Content */}
             <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
               <div className=" text-gray-200 text-lg">
@@ -487,6 +524,7 @@ export const CodingInterface = ({ session, id }) => {
               </div>
             </div>
           </div>
+
 
           {/* Action Bar */}
           <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
@@ -522,6 +560,7 @@ export const CodingInterface = ({ session, id }) => {
               >
                 Submit Assignment
               </Button>
+
 
               <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
                 <ModalContent>
@@ -565,6 +604,7 @@ export const CodingInterface = ({ session, id }) => {
           </div>
         </Card>
 
+
         <style jsx>{`
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -585,3 +625,8 @@ export const CodingInterface = ({ session, id }) => {
     </form>
   );
 };
+
+
+
+
+
