@@ -1,20 +1,20 @@
 "use client";
 import React, { useState, useRef, useCallback } from "react";
 import { generateHTML } from "@tiptap/core";
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Superscript from '@tiptap/extension-superscript';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import BulletList from '@tiptap/extension-bullet-list';
-import ListItem from '@tiptap/extension-list-item';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { Placeholder } from '@tiptap/extensions'
-import { all, createLowlight } from 'lowlight';
-import js from 'highlight.js/lib/languages/javascript'
-import {Color, TextStyle} from '@tiptap/extension-text-style';
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import Superscript from "@tiptap/extension-superscript";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import BulletList from "@tiptap/extension-bullet-list";
+import ListItem from "@tiptap/extension-list-item";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { Placeholder } from "@tiptap/extensions";
+import { all, createLowlight } from "lowlight";
+import js from "highlight.js/lib/languages/javascript";
+import { Color, TextStyle } from "@tiptap/extension-text-style";
 
-import Heading from '@tiptap/extension-heading';
+import Heading from "@tiptap/extension-heading";
 import {
   Play,
   RotateCcw,
@@ -55,7 +55,6 @@ import {
 import CodeEditor from "../components/editor/code-editor";
 import { RichTextEditor } from "../components/assignment/RichText/rich-description";
 
-
 export const CodingInterface = ({ session, id }) => {
   const [activeTab, setActiveTab] = useState("description");
   const [consoleTab, setConsoleTab] = useState("testcases");
@@ -72,7 +71,6 @@ export const CodingInterface = ({ session, id }) => {
   const [formData, setFormData] = useState({
     submitted_code: "",
   });
-
 
   const [assignmentData, setAssignmentData] = useState(null);
   const fetchDataForAssignment = useCallback(async () => {
@@ -111,17 +109,14 @@ export const CodingInterface = ({ session, id }) => {
     }
   }, []);
 
-
   const saveAssignmentData = async (isSubmit) => {
     const submit = isSubmit || false;
-
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
     const student_id = user?.id;
     console.log("Current user ID:", student_id);
-
 
     console.log("Attempting to save assignment data:", assignmentData);
     setSaving(true);
@@ -136,7 +131,6 @@ export const CodingInterface = ({ session, id }) => {
       if (submit) {
         console.log("Assignment data submitted successfully:", data);
 
-
         addToast({
           title: "Assignment Submitted",
           description: "Your assignment has been submitted successfully.",
@@ -145,7 +139,6 @@ export const CodingInterface = ({ session, id }) => {
         });
       } else {
         console.log("Assignment data saved successfully:", data);
-
 
         addToast({
           title: "Assignment Saved",
@@ -181,18 +174,14 @@ export const CodingInterface = ({ session, id }) => {
     setSaving(false);
   };
 
-
   React.useEffect(() => {
     fetchDataForAssignment();
   }, [fetchDataForAssignment, id]);
 
-
   const editorRef = React.useRef(null);
-
 
   const isDragging = useRef(false);
   const dragType = useRef("");
-
 
   const handleMouseDown = useCallback(
     (type) => (e) => {
@@ -205,12 +194,11 @@ export const CodingInterface = ({ session, id }) => {
   const handleResetCode = () => {
     if (initialCode) {
       editorRef.current?.setValue(initialCode);
-    }
-    
-    else {
-        addToast({
+    } else {
+      addToast({
         title: "No initial code available",
-        description: "There is no initial code to reset to.",
+        description:
+          "There is no initial code to reset to. This may be an error",
         duration: 3000,
         color: "warning",
         variant: "flat",
@@ -219,17 +207,14 @@ export const CodingInterface = ({ session, id }) => {
   };
   const [output, setOutput] = useState(null);
 
-
   const runCode = async () => {
     const code = editorRef.current?.getValue?.();
     console.log("Running code..:", code);
-
 
     if (!code) {
       setOutput("Please select a language and write some code.");
       return;
     }
-
 
     try {
       // TODO edit teh selecedLanguage
@@ -237,7 +222,6 @@ export const CodingInterface = ({ session, id }) => {
       const startTime = performance.now();
       const result = await executeCode("java", code);
       const endTime = performance.now();
-
 
       const runResult = result.run || {};
       if (!runResult.stderr) {
@@ -249,7 +233,6 @@ export const CodingInterface = ({ session, id }) => {
         runResult.stderr ||
         "No output.";
 
-
       setOutput(finalOutput);
     } catch (error) {
       console.error(error);
@@ -260,10 +243,8 @@ export const CodingInterface = ({ session, id }) => {
     }
   };
 
-
   const handleMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
-
 
     if (dragType.current === "vertical") {
       const newWidth = (e.clientX / window.innerWidth) * 100;
@@ -280,12 +261,10 @@ export const CodingInterface = ({ session, id }) => {
     }
   }, []);
 
-
   const handleMouseUp = useCallback(() => {
     isDragging.current = false;
     dragType.current = "";
   }, []);
-
 
   React.useEffect(() => {
     document.addEventListener("mousemove", handleMouseMove);
@@ -296,12 +275,10 @@ export const CodingInterface = ({ session, id }) => {
     };
   }, [handleMouseMove, handleMouseUp]);
 
-
   const handleSubmit = () => {
     console.log("Submitting assignment...", assignmentData);
     // send code to backend
   };
-
 
   // // track user refreshing or going back.
   React.useEffect(() => {
@@ -313,9 +290,7 @@ export const CodingInterface = ({ session, id }) => {
         };
         console.log("Saving assignment data to session storage:", updatedData);
 
-
         sessionStorage.setItem(`assignment-${id}`, JSON.stringify(updatedData));
-
 
         event.preventDefault();
         // Modern browsers show a generic message and ignore the custom one.
@@ -323,91 +298,90 @@ export const CodingInterface = ({ session, id }) => {
       }
     };
 
-
     window.addEventListener("beforeunload", handleBeforeUnload);
-
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [id, assignmentData, editorRef]);
 
-
-const lowlight = createLowlight(all); // You can also use `common` or individual
-lowlight.register("javascript", js);
+  const lowlight = createLowlight(all); // You can also use `common` or individual
+  lowlight.register("javascript", js);
   const extensions = [
-      StarterKit.configure({
-        bulletList: false,
-        codeBlock: false,
-        heading: false,
-      }),
-      Placeholder.configure({
-        placeholder: "Enter assignment guidelines",
-        showOnlyCurrent: true,
-        HTMLAttributes: {
-          class: "text-default-400 bg-red-500 italic",
-        },
-      }),
-
-      // Inline formatting
-      Underline,
-      Superscript,
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "text-primary underline cursor-pointer",
-        },
-      }),
-
-      // Images (base64 allowed)
-      Image.configure({
-        allowBase64: true,
-        HTMLAttributes: {
-          class: "rounded-md max-w-full",
-        },
-      }),
-
-      // Bullet list (we disabled it above, so re‐enable with custom styles)
-      BulletList.configure({
-        HTMLAttributes: {
-          class: "list-disc pl-6",
-        },
-      }),
-      ListItem,
-
-      // Code block with syntax highlighting
-      CodeBlockLowlight.configure({
-        lowlight,
-        defaultLanguage: "javascript",
-        languageClassPrefix: "language-",
-        HTMLAttributes: {
-          class:
-            "bg-slate-700 rounded-md p-4 my-2 font-mono text-sm overflow-x-auto",
-        },
-      }),
-
-      Heading.configure({
-        levels: [1, 2],
-        HTMLAttributes: {
-          class: "prose prose-slate dark:prose-invert",
-        },
-      }),
-      TextStyle,
-    Color.configure({
-      types: ['textStyle'],
+    StarterKit.configure({
+      bulletList: false,
+      codeBlock: false,
+      heading: false,
     }),
-    ]
+    Placeholder.configure({
+      placeholder: "Enter assignment guidelines",
+      showOnlyCurrent: true,
+      HTMLAttributes: {
+        class: "text-default-400 bg-red-500 italic",
+      },
+    }),
+
+    // Inline formatting
+    Underline,
+    Superscript,
+    Link.configure({
+      openOnClick: false,
+      HTMLAttributes: {
+        class: "text-primary underline cursor-pointer",
+      },
+    }),
+
+    // Images (base64 allowed)
+    Image.configure({
+      allowBase64: true,
+      HTMLAttributes: {
+        class: "rounded-md max-w-full",
+      },
+    }),
+
+    // Bullet list (we disabled it above, so re‐enable with custom styles)
+    BulletList.configure({
+      HTMLAttributes: {
+        class: "list-disc pl-6",
+      },
+    }),
+    ListItem.configure({
+      HTMLAttributes: {
+        class: "my-2 ",
+      },
+    }),
+
+    // Code block with syntax highlighting
+    CodeBlockLowlight.configure({
+      lowlight,
+      defaultLanguage: "javascript",
+      languageClassPrefix: "language-",
+      HTMLAttributes: {
+        class:
+          "bg-gray-900 rounded-md p-4 my-2 font-mono text-sm overflow-x-auto",
+      },
+    }),
+
+    Heading.configure({
+      levels: [1, 2],
+      HTMLAttributes: {
+        class: "prose prose-slate dark:prose-invert my-4",
+      },
+    }),
+    TextStyle,
+    Color.configure({
+      types: ["textStyle"],
+    }),
+  ];
   const convertJsonToHtml = (jsonContent) => {
     if (!jsonContent) {
       return "";
     }
 
-
     // Use TipTap's utility to generate an HTML string from the JSON
     return generateHTML(jsonContent, extensions);
   };
   const descriptionHtml = convertJsonToHtml(assignmentData?.description);
-
 
   return (
     <form>
@@ -442,7 +416,6 @@ lowlight.register("javascript", js);
                 </Tabs>
               </CardHeader>
 
-
               {/* Problem Content */}
               {/* FIX #2: Remove h-full. The flex-1 class will now work correctly and is all you need. */}
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
@@ -463,17 +436,12 @@ lowlight.register("javascript", js);
                     </div>
                   </div>
 
-
                   {/* The content that will overflow and cause scrolling */}
-                  {/* <div className="space-y-4">
+                  <div className="space-y-4">
                     <div
                       dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                     ></div>
-                  </div> */}
-                  <RichTextEditor
-                                  className="md:col-span-2 bg-zinc-200 max-h-[400px]"
-                                  isRequired
-                                />
+                  </div>
                 </div>
               </div>
             </div>
@@ -489,7 +457,6 @@ lowlight.register("javascript", js);
             className="text-white/30 group-hover:text-blue-400/70 transition-colors"
           />
         </div>
-
 
         {/* Right Panel - Code Editor and Console */}
         <Card
@@ -526,7 +493,6 @@ lowlight.register("javascript", js);
                   </Button>
                 </Tooltip>
 
-
                 <Button
                   isIconOnly
                   variant="light"
@@ -540,7 +506,6 @@ lowlight.register("javascript", js);
                 </Button>
               </div>
             </CardHeader>
-
 
             {/* Code Editor */}
             {isLoading ? (
@@ -562,7 +527,6 @@ lowlight.register("javascript", js);
             )}
           </div>
 
-
           {/* Horizontal Resize Handle */}
           <div
             className="h-1.5 bg-white/10 hover:bg-blue-400/50 cursor-row-resize transition-colors duration-200 flex items-center justify-center group"
@@ -570,7 +534,6 @@ lowlight.register("javascript", js);
           >
             <div className="w-8 h-0.5 bg-white/30 group-hover:bg-blue-400/70 rounded-full transition-colors"></div>
           </div>
-
 
           {/* Console Section */}
           <div
@@ -609,7 +572,6 @@ lowlight.register("javascript", js);
               </Tabs>
             </div>
 
-
             {/* Console Content */}
             <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
               <div className=" text-gray-200 text-lg">
@@ -621,7 +583,6 @@ lowlight.register("javascript", js);
               </div>
             </div>
           </div>
-
 
           {/* Action Bar */}
           <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
@@ -657,7 +618,6 @@ lowlight.register("javascript", js);
               >
                 Submit Assignment
               </Button>
-
 
               <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
                 <ModalContent>
@@ -701,7 +661,6 @@ lowlight.register("javascript", js);
           </div>
         </Card>
 
-
         <style jsx>{`
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -722,8 +681,3 @@ lowlight.register("javascript", js);
     </form>
   );
 };
-
-
-
-
-
