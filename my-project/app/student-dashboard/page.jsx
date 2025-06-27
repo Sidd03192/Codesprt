@@ -14,7 +14,7 @@ import { useEffect, useCallback } from "react";
 import { supabase } from "../supabase-client";
 // Add student page imports
 import { StudentOverview } from "./overview";
-import { StudentAssignments } from "./new-assignments";
+import { StudentAssignments } from "./assignments";
 import { StudentGrades } from "./grades";
 import { StudentCourses } from "./courses";
 import { getAssignmentsData } from "./api";
