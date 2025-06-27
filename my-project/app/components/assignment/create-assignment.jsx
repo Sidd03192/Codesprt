@@ -195,7 +195,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
       teacher_id: session.user.id,
       title: formData.title,
       description: description, // Assuming this holds the text content from RichTextEditor
-      language: selectedLanguage || "java",
+      language: selectedLanguage,
       code_template: code,
       hints: "", // To be implemented
       open_at: startDate.toString(),

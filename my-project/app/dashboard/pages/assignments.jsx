@@ -1,654 +1,240 @@
-// ... existing imports ...
-import { supabase } from "../../supabase-client";
-
+"use client";
+import React, { useEffect, useState } from "react";
 import {
-  Button,
   Card,
-  Checkbox,
-  Divider,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
+  CardBody,
+  CardHeader,
+  Button,
   Input,
-  ScrollShadow,
-  Select,
-  SelectItem,
   Tabs,
   Tab,
-  Textarea,
-  DatePicker,
-  Form,
-  Tooltip,
-  form,
-  Spinner,
+  Chip,
 } from "@heroui/react";
-import React, { useEffect } from "react";
-import {
-  Code,
-  WandSparkles,
-  LassoSelect,
-  Upload,
-  ArrowUpFromLine,
-  FlaskConical,
-  FileSliders,
-  MonitorCog,
-} from "lucide-react";
-import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { RichTextEditor } from "../../components/assignment/RichText/rich-description";
-import { useRef } from "react";
-import { executeCode } from "../../components/editor/api";
-import CodeEditor from "../../components/editor/code-editor";
-import { Testcase } from "../../components/assignment/testcases";
-import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
-export default function CreateAssignmentPage({ session, classes }) {
-  const [formData, setFormData] = React.useState({
-    classId: "",
-    title: "",
-    description: "",
+import { Code, CircleX } from "lucide-react";
+import { Modal, ModalContent, ModalHeader } from "@heroui/modal";
+import CreateAssignmentPage from "../../components/assignment/create-assignment";
+import { createClient } from "@supabase/supabase-js";
 
-    selectedStudentIds: [],
-    codeTemplate:
-      "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
-    dueDate: null,
-    startDate: null,
-    testcases: [],
-    lockedLines: [],
-    hiddenLines: [],
-    allowLateSubmission: false,
-    autoGrade: false,
-    allowAutocomplete: false,
-    showResults: false,
-    allowCopyPaste: false,
-    checkStyle: false,
-  });
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_API_KEY
+);
 
-  const [selectedLanguage, setSelectedLanguage] = React.useState("Java");
-  const editorRef = React.useRef(null);
-  const fileInputRef = React.useRef(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false); // For submission loading state
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [students, setStudents] = useState([]);
-  const [startDate, setStartDate] = useState(null);
-  const [dueDate, setDueDate] = useState(null);
-  const [assignmentTitle, setAssignmentTitle] = useState("");
+export const Assignments = ({ session, classes }) => {
+  const [assignments, setAssignments] = useState([]);
+  const [selected, setSelected] = useState("all");
+  const [searchValue, setSearchValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAssignments = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("assignments")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error) setAssignments(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      if (formData.classId) {
-        setIsLoading(true);
+    fetchAssignments();
 
-        const fetchedStudents = await fetchStudentsForClass(formData.classId);
-        console.log("students for class:", fetchedStudents);
-        setStudents(fetchedStudents);
-      } else {
-        setStudents([]);
-      }
-      setIsLoading(false);
+    const subscription = supabase
+      .channel("public:assignments")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "assignments" },
+        (payload) => {
+          setAssignments((prev) => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
     };
+  }, []);
 
-    fetchStudents();
-  }, [formData.classId]);
-
-  const selectedClass = classes?.find((c) => c.id === formData.classId) || null;
-
-  const handleClassChange = (classId) => {
-    // updates class Id
-    setFormData((prev) => ({
-      ...prev,
-      classId,
-      selectedStudentIds: [],
-    }));
-  };
-  const handleFormChange = (key, value) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleToggleStudent = (studentId) => {
-    setFormData((prev) => {
-      const isSelected = prev.selectedStudentIds.includes(studentId);
-      return {
-        ...prev,
-        selectedStudentIds: isSelected
-          ? prev.selectedStudentIds.filter((id) => id !== studentId)
-          : [...prev.selectedStudentIds, studentId],
-      };
+  const formatDateTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString(undefined, {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
-  const handleSelectAllStudents = () => {
-    const allStudentIds = students.map((s) => s.student_id);
-    console.log("all student ids:", allStudentIds);
-    const allSelected = students.length === formData.selectedStudentIds.length;
+  const determineStatus = (assignment) => {
+    const now = new Date();
+    const openAt = new Date(assignment.open_at);
+    const dueAt = new Date(assignment.due_at);
 
-    setFormData((prev) => ({
-      ...prev,
-      selectedStudentIds: allSelected ? [] : allStudentIds,
-    }));
+    if (now < openAt) return "inactive";
+    if (now > dueAt) return "completed";
+    return "active";
   };
 
-  const [output, setOutput] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-
-  const runCode = async () => {
-    const code = editorRef.current?.getValue?.();
-    if (!code || !selectedLanguage) {
-      setOutput("Please select a language and write some code.");
-      return;
-    }
-
-    try {
-      setIsRunning(true);
-      const result = await executeCode(selectedLanguage, code);
-      const runResult = result.run || {};
-      const finalOutput =
-        runResult.output ||
-        runResult.stdout ||
-        runResult.stderr ||
-        "No output.";
-
-      setOutput(finalOutput);
-    } catch (error) {
-      console.error(error);
-      console.error("Execution failed:", error);
-      setOutput("Execution failed.");
-    } finally {
-      setIsRunning(false);
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "primary";
+      case "inactive":
+        return "warning";
+      case "completed":
+        return "success";
+      default:
+        return "default";
     }
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result;
-      handleFormChange("codeTemplate", content);
-    };
-    reader.readAsText(file);
-  };
-
-  const triggerFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true); // Start loading
-    console.log("Form submitted:", formData);
-
-    const code = editorRef.current.getValue();
-
-    const assignmentData = {
-      class_id: formData.classId, // need to update thsi
-      teacher_id: formData.teacherId,
-      title: formData.title,
-      description: formData.description, // Assuming this holds the text content from RichTextEditor
-      language: selectedLanguage,
-      code_template: code,
-      hints: "", // To be implemented
-      open_at: formData.startDate,
-      due_at: formData.dueDate,
-      created_at: new Date().toISOString(),
-      status: formData.status,
-      testcases: formData.testcases,
-      locked_lines: formData.lockedLines,
-      hidden_lines: formData.hiddenLines,
-      allow_late_submission: formData.allowLateSubmission,
-      allow_copy_paste: formData.allowCopyPaste,
-      allow_auto_complete: formData.allowAutocomplete,
-      auto_grade: formData.autoGrade,
-      show_results: formData.showResults,
-      check_style: formData.checkStyle,
-    };
-
-    console.log("Submitting assignmentData to the database:", assignmentData);
-  };
-
-  const handlePreview = () => {
-    console.log("Preview assignment:", formData);
-    // Implementation for preview functionality
-  };
-
-  const languages = [
-    { key: "python", name: "Python" },
-    { key: "java", name: "Java" },
-    { key: "cpp", name: "C++" },
-    { key: "c", name: "C" },
-    { key: "javascript", name: "Javascript" },
-  ];
+  const filteredAssignments = assignments.filter((assignment) => {
+    const dynamicStatus = determineStatus(assignment);
+    if (selected !== "all" && dynamicStatus !== selected) return false;
+    if (
+      searchValue &&
+      !assignment.title?.toLowerCase().includes(searchValue.toLowerCase())
+    )
+      return false;
+    return true;
+  });
 
   return (
-    <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
-      <main className="mx-auto w-full p-4 pb-5">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Assignment Details Card */}
-          <Card className="bg-zinc-800/40 p-6 w-full">
-            <h2 className="mb-6 text-xl font-semibold">Assignment Details</h2>
-            <div className="grid  gap-6 lg:grid-cols-2">
-              <Input
-                isRequired
-                label="Assignment Title"
-                placeholder="Enter assignment title"
-                value={formData.title}
-                variant="bordered"
-                onValueChange={(value) => handleFormChange("title", value)}
+    <div className="space-y-6">
+      <Card className="border border-divider">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Icon icon="lucide:file-text" className="text-lg" />
+            <h2 className="text-lg font-medium">Assignments</h2>
+          </div>
+          <Button
+            color="secondary"
+            variant="flat"
+            onPress={() => setOpen(true)}
+            className="flex items-center"
+          >
+            <Icon icon="lucide:plus" className="mr-1" />
+            Create Assignment
+          </Button>
+          <Modal
+            isOpen={open}
+            onClose={() => setOpen(false)}
+            closeButton={
+              <Button isIconOnly variant="light" color="danger">
+                <CircleX color="red" />
+              </Button>
+            }
+            className="max-h-[90vh] max-w-[90vw] overflow-y-auto"
+          >
+            <ModalContent className="w-full">
+              <ModalHeader className="flex border-zinc-800 bg-zinc-900">
+                <div className="flex items-center gap-3">
+                  <Code className="text-2xl" color="white" />
+                  <h1 className="text-xl font-semibold">Assignment Creator</h1>
+                </div>
+              </ModalHeader>
+              <CreateAssignmentPage
+                session={session}
+                classes={classes}
+                onClose={() => setOpen(false)}
               />
-              <div className="flex  gap-4 ">
-                <DatePicker
-                  isRequired
-                  hideTimeZone
-                  showMonthAndYearPickers
-                  label="Open Assignment at"
-                  variant="bordered"
-                  granularity="minute"
-                  value={startDate}
-                  onChange={setStartDate}
-                />
-                <DatePicker
-                  hideTimeZone
-                  isRequired
-                  showMonthAndYearPickers
-                  label="Close Assignment at"
-                  variant="bordered"
-                  granularity="minute"
-                  value={dueDate}
-                  onChange={setDueDate}
-                />
-              </div>
+            </ModalContent>
+          </Modal>
+        </CardHeader>
+        <CardBody>
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+            <Input
+              placeholder="Search assignments..."
+              startContent={<Icon icon="lucide:search" />}
+              value={searchValue}
+              onValueChange={setSearchValue}
+              className="w-full sm:max-w-xs"
+            />
+            <Tabs
+              selectedKey={selected}
+              onSelectionChange={setSelected}
+              aria-label="Assignment status"
+              classNames={{
+                base: "w-full sm:w-auto",
+                tabList: "gap-2",
+              }}
+            >
+              <Tab key="all" title="All" />
+              <Tab key="active" title="Active" />
+              <Tab key="draft" title="Draft" />
+              <Tab key="inactive" title="Inactive" />
+              <Tab key="completed" title="Completed" />
+            </Tabs>
+          </div>
 
-              <RichTextEditor
-                className="md:col-span-2 bg-zinc-200 max-h-[400px]"
-                isRequired
-              />
-
-              <Select
-                isRequired
-                className="md:col-span-2 "
-                variant="bordered"
-                label="Class"
-                placeholder="Select a class"
-                selectedKeys={formData.classId ? [formData.classId] : []}
-                onChange={(e) => handleClassChange(e.target.value)}
-              >
-                {classes &&
-                  classes.length > 0 &&
-                  classes.map((classInfo) => (
-                    <SelectItem key={classInfo.id} value={classInfo.id}>
-                      {classInfo.name}
-                    </SelectItem>
-                  ))}
-              </Select>
-            </div>
-
-            {/* Students */}
-
-            {students && formData.classId && (
-              <div className="mt-6">
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <Spinner />
-                  </div>
-                ) : (
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-medium font-medium">Students</h3>
-                      <Button
-                        className="mb-3"
-                        color="primary"
-                        variant="flat"
-                        onPress={handleSelectAllStudents}
-                      >
-                        {students.length === formData.selectedStudentIds.length
-                          ? "Unselect All"
-                          : "Select All"}
-                      </Button>
-                    </div>
-                    <ScrollShadow className="max-h-[200px]">
-                      <div className="space-y-2">
-                        {students && students.length > 0 ? (
-                          students.map((student) => (
-                            <div
-                              key={student.student_id}
-                              className="flex items-center justify-between rounded-medium border border-zinc-700 p-3"
+          <div className="space-y-4">
+            {filteredAssignments.length > 0 ? (
+              filteredAssignments.map((assignment) => {
+                const status = determineStatus(assignment);
+                return (
+                  <Card key={assignment.id} className="border border-divider">
+                    <CardBody>
+                      <div className="flex flex-col sm:flex-row justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{assignment.title}</h3>
+                            <Chip
+                              size="sm"
+                              color={getStatusColor(status)}
+                              variant="flat"
                             >
-                              <div className="flex items-center gap-3">
-                                <Checkbox
-                                  isSelected={formData.selectedStudentIds.includes(
-                                    student.student_id
-                                  )}
-                                  onValueChange={() =>
-                                    handleToggleStudent(student.student_id)
-                                  }
-                                />
-                                <div>
-                                  <div className="font-medium">
-                                    {student.full_name}
-                                  </div>
-                                  <div className="text-small text-zinc-400">
-                                    {student.student_email || "No email"}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-small text-red-400 w-full flex justify-center">
-                            This class has no students. Please add students in
-                            the classroom page.
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </Chip>
                           </div>
-                        )}
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 text-sm text-foreground-500">
+                            <span>Class ID: {assignment.class_id}</span>
+                            <span>
+                              Opens: {formatDateTime(assignment.open_at)}
+                            </span>
+                            <span>
+                              Due: {formatDateTime(assignment.due_at)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          <Button size="sm" variant="flat">
+                            <Icon icon="lucide:eye" className="mr-1" />
+                            View
+                          </Button>
+                          <Button size="sm" variant="flat">
+                            <Icon icon="lucide:edit" className="mr-1" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="flat" color="danger">
+                            <Icon icon="lucide:trash-2" />
+                          </Button>
+                        </div>
                       </div>
-                    </ScrollShadow>
-
-                    {classes.length === 0 && (
-                      <div className="mt-2 text-small text-zinc-400">
-                        {/* Number of selected students of total (total is second) */}
-                        {formData.selectedStudentIds.length} of{" "}
-                        {students.length || "0"} selected
-                      </div>
-                    )}
-                  </div>
-                )}
+                    </CardBody>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="text-center py-8">
+                <Icon
+                  icon="lucide:file-question"
+                  className="mx-auto text-4xl text-foreground-400 mb-2"
+                />
+                <p className="text-foreground-500">No assignments found</p>
+                <p className="text-sm text-foreground-400">
+                  Try adjusting your search or filters
+                </p>
               </div>
             )}
-          </Card>
-
-          {/* Code Template and Settings Split Screen */}
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-            {/* Code Template Section - 60% width */}
-            <Card className="col-span-1 xl:col-span-3 bg-zinc-800/40 p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Code Template</h2>
-                <div className="flex items-center gap-2 w-fit">
-                  <Select
-                    placeholder="Select a language"
-                    className="min-w-[120px]"
-                    value={selectedLanguage}
-                    isRequired={true}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                  >
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.key} value={lang.key}>
-                        {lang.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-
-                  <Button
-                    variant="flat"
-                    color="primary"
-                    className="min-w-[100px] "
-                    onPress={triggerFileUpload}
-                  >
-                    <Icon icon="lucide:upload" className="" />
-                    Upload
-                  </Button>
-
-                  <Button
-                    variant="flat"
-                    color="success"
-                    className="min-w-[100px]"
-                    onPress={runCode}
-                    isDisabled={isRunning}
-                  >
-                    <Icon icon="lucide:play" />
-                    {isRunning ? "Running..." : "Run"}
-                  </Button>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".js,.py,.java,.ts,.cs,.cpp,.txt"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
-              </div>
-
-              <p className="mb-4 text-small text-zinc-400">
-                Click on the line numbers to lock/unlock lines for students.
-              </p>
-
-              <CodeEditor
-                language={selectedLanguage}
-                editorRef={editorRef}
-                formData={formData}
-                setFormData={setFormData}
-              />
-
-              {output && (
-                <div className="mt-4 p-4 bg-black text-white rounded-lg">
-                  <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
-                  <pre className="whitespace-pre-wrap">{output}</pre>
-                </div>
-              )}
-            </Card>
-
-            {/* Assignment Settings & Test Cases - 40% width */}
-            <Card className="col-span-1 xl:col-span-2 bg-zinc-800/40 p-6">
-              <h2 className="mb-6 text-xl font-semibold">
-                Assignment Settings
-              </h2>
-              <Tabs color="default" variant="bordered">
-                {/* Test Cases Section */}
-                <Tab
-                  key="photos"
-                  title={
-                    <div className="flex items-center space-x-1">
-                      <FlaskConical size={15} />
-                      <span>Test Cases</span>
-                    </div>
-                  }
-                >
-                  {" "}
-                  <Testcase formData={formData} setFormData={setFormData} />
-                </Tab>
-
-                <Tab
-                  key="items"
-                  title={
-                    <div className="flex items-center space-x-1">
-                      <MonitorCog size={15} />
-                      <span>Settings</span>
-                    </div>
-                  }
-                >
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Grading Options</h3>
-                    <p className="text-zinc-400">
-                      Configure how this assignment will be graded.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Checkbox
-                        value={formData.autoGrade}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({ ...prev, autoGrade: value }))
-                        }
-                      >
-                        Auto-grade test cases
-                      </Checkbox>
-                      <Checkbox
-                        value={formData.checkStyle}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            checkStyle: value,
-                          }))
-                        }
-                      >
-                        Check for code style
-                      </Checkbox>
-
-                      <Tooltip
-                        className="max-w-[300px]"
-                        content={
-                          <div>
-                            {"Includes class methods & variable names"}
-                            <br />
-                            {"(its harmless)"}
-                          </div>
-                        }
-                      >
-                        <Checkbox
-                          value={formData.allowAutocomplete}
-                          onValueChange={(value) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              allowAutocomplete: value,
-                            }))
-                          }
-                        >
-                          Disable autocomplete
-                        </Checkbox>
-                      </Tooltip>
-                      <Checkbox
-                        value={formData.allowCopyPaste}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            allowCopyPaste: value,
-                          }))
-                        }
-                      >
-                        Allow copy & paste
-                      </Checkbox>
-                    </div>
-
-                    <div className="space-y-4 pt-4">
-                      <Input
-                        classNames={{
-                          input: "bg-zinc-700",
-                          inputWrapper: "bg-zinc-700",
-                        }}
-                        label="Points per test case"
-                        placeholder="10"
-                        type="number"
-                        min="0"
-                        variant="bordered"
-                      />
-                      <Input
-                        classNames={{
-                          input: "bg-zinc-700",
-                          inputWrapper: "bg-zinc-700",
-                        }}
-                        label="Style points"
-                        placeholder="5"
-                        type="number"
-                        min="0"
-                        variant="bordered"
-                      />
-                    </div>
-                  </div>
-                </Tab>
-
-                {/* Grading Options Section */}
-              </Tabs>
-            </Card>
           </div>
-
-          {/* Submissions Section */}
-          <Card className="bg-zinc-800/40 p-6">
-            <h2 className="mb-6 text-xl font-semibold">Submissions</h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <h3 className="mb-2 text-medium font-medium">
-                    Submission Options
-                  </h3>
-                  <div className="space-y-2">
-                    <Checkbox>Show test results immediately</Checkbox>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="mb-2 text-medium font-medium">
-                    Submission Limits
-                  </h3>
-                  <div className="space-y-4">
-                    <Input
-                      classNames={{
-                        input: "bg-zinc-700",
-                        inputWrapper: "bg-zinc-700",
-                      }}
-                      label="Maximum Attempts"
-                      placeholder="Unlimited"
-                      type="number"
-                      min="0"
-                      variant="bordered"
-                    />
-                    <div className="mt-6 flex flex-wrap gap-4">
-                      <Checkbox
-                        isSelected={formData.allowLateSubmission}
-                        onValueChange={(value) =>
-                          handleFormChange("allowLateSubmission", value)
-                        }
-                      >
-                        Allow late submissions
-                      </Checkbox>
-                      <Tooltip content="Displays testcases results to students immediately after submission">
-                        <Checkbox
-                          value={formData.showResults}
-                          onValueChange={(value) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              showResults: value,
-                            }))
-                          }
-                        >
-                          Show results immediately
-                        </Checkbox>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <div className="flex justify-between">
-            <Button
-              size="lg"
-              variant="flat"
-              // startContent={<Icon icon="lucide:eye" />}
-              onPress={handlePreview}
-            >
-              See Preview
-            </Button>
-
-            <div className="flex gap-2">
-              <Button size="lg" variant="flat">
-                Export
-              </Button>
-
-              <Button
-                color="secondary"
-                size="lg"
-                type="submit"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                spinner={<Spinner />}
-                onClick={() => setFormData({ ...formData, status: "draft" })}
-              >
-                {isSubmitting ? "Saving..." : "Save Draft"}
-              </Button>
-
-              <Button
-                color="primary"
-                size="lg"
-                type="submit"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                spinner={<Spinner />}
-              >
-                {isSubmitting ? "Creating..." : "Create Assignment"}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </main>
+        </CardBody>
+      </Card>
     </div>
   );
-}
+};
