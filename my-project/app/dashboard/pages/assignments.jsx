@@ -36,11 +36,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { RichTextEditor } from "./RichText/rich-description";
+import { RichTextEditor } from "../../components/assignment/RichText/rich-description";
 import { useRef } from "react";
-import { executeCode } from "../editor/api";
-import CodeEditor from "../editor/code-editor";
-import { Testcase } from "./testcases";
+import { executeCode } from "../../components/editor/api";
+import CodeEditor from "../../components/editor/code-editor";
+import { Testcase } from "../../components/assignment/testcases";
 import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
 export default function CreateAssignmentPage({ session, classes }) {
   const [formData, setFormData] = React.useState({
