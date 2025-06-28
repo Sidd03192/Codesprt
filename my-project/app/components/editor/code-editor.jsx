@@ -61,6 +61,8 @@ export default function CodeEditor({
       });
       editor.onKeyDown((e) => {
         // diasble ctrl option
+        if (role == "teacher") return;
+        console.log(role);
         const isCtrlOrCmd = e.ctrlKey || e.metaKey;
         const isPasteKey = e.keyCode === monaco.KeyCode.KeyV;
         const isCopyKey = e.keyCode === monaco.KeyCode.KeyC;

@@ -20,10 +20,7 @@ import { Overview } from "./pages/overview";
 import { Assignments } from "./pages/assignments";
 import { Gradebook } from "./pages/gradebook";
 import { Classroom } from "./pages/classroom";
-import { StudentOverview } from "./pages/student/overview";
-import { StudentAssignments } from "./pages/student/assignments";
-import { StudentGrades } from "./pages/student/grades";
-import { StudentCourses } from "./pages/student/courses";
+
 export default function Dashboard() {
   const [userType, setUserType] = React.useState("teacher"); // "teacher" or "student"
 

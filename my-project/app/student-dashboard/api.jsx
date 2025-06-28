@@ -46,7 +46,7 @@ export async function getAssignmentsData(student_id) {
     nextStartTime: nextEvent?.start_date || null, // Send the string or null
   };
 }
-export const getAssignmentDetails = async ({ assignment_id }) => {
+export const getAssignmentDetails = async (assignment_id) => {
   const supabase = await createClient();
   console.log("Fetching assignment details:", assignment_id);
   if (!assignment_id) {
@@ -56,13 +56,15 @@ export const getAssignmentDetails = async ({ assignment_id }) => {
   const { data, error } = await supabase
     .from("assignments")
     .select(
-      "id, title, description, language, code_template, hints, open_at, due_at, status, test_cases, locked_lines, hidden_lines, allow_late_submission, allow_copy_paste, allow_auto_complete, auto_grade, show_results"
+      "id, title, description, language, code_template, hints, open_at, due_at, status,  locked_lines, hidden_lines, allow_late_submission, allow_copy_paste, allow_auto_complete, auto_grade, show_results"
     )
-    .eq("id", assignment_id);
+    .eq("id", assignment_id)
+    .single(); // Use .single() to get a single object instead of an array
   if (error) {
     console.error("Error fetching assignments:", error.message);
     return;
   } else {
+    console.log("Assignment details:", data);
     return data;
   }
 };
@@ -190,4 +192,46 @@ try {
   console.log("Final Output:\n", result.run.stdout);
 
   return result.run; // or process to extract score
+};
+
+export const saveAssignment = async (
+  student_code,
+  student_id,
+  assignment_id,
+  isSubmitting
+) => {
+  const supabase = await createClient();
+
+  console.log(
+    "Saving assignment data for student:",
+    student_id,
+    "assignment:",
+    assignment_id,
+    "code:",
+    student_code
+  );
+  const numericAssignmentId = parseInt(assignment_id, 10);
+
+  if (!student_code || !student_id || !numericAssignmentId) {
+    console.error("Missing required parameters for saving assignment data.");
+    return;
+  }
+  let date = null;
+  if (isSubmitting) {
+    date = new Date().toISOString(); // Get the current date and time in ISO format
+  }
+
+  const { data, error } = await supabase
+    .from("assignment_students")
+    .update({ submitted_code: student_code, submitted_at: date })
+    .eq("student_id", student_id)
+    .eq("assignment_id", numericAssignmentId)
+    .single();
+  if (error) {
+    console.error("Error saving assignment data:", error.message);
+    return;
+  } else {
+    console.log("Assignment data saved:", data);
+    return data;
+  }
 };

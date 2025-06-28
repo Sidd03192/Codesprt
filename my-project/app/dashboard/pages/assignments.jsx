@@ -12,11 +12,7 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Code, CircleX } from "lucide-react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-} from "@heroui/modal";
+import { Modal, ModalContent, ModalHeader } from "@heroui/modal";
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
 import { createClient } from "@supabase/supabase-js";
 
@@ -193,14 +189,17 @@ export const Assignments = ({ session, classes }) => {
                               color={getStatusColor(status)}
                               variant="flat"
                             >
-                              {status.charAt(0).toUpperCase() +
-                                status.slice(1)}
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
                             </Chip>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 text-sm text-foreground-500">
                             <span>Class ID: {assignment.class_id}</span>
-                            <span>Opens: {formatDateTime(assignment.open_at)}</span>
-                            <span>Due: {formatDateTime(assignment.due_at)}</span>
+                            <span>
+                              Opens: {formatDateTime(assignment.open_at)}
+                            </span>
+                            <span>
+                              Due: {formatDateTime(assignment.due_at)}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 self-end sm:self-center">

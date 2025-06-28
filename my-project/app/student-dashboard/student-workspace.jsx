@@ -1,5 +1,20 @@
 "use client";
 import React, { useState, useRef, useCallback } from "react";
+import { generateHTML } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import Superscript from "@tiptap/extension-superscript";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import BulletList from "@tiptap/extension-bullet-list";
+import ListItem from "@tiptap/extension-list-item";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { Placeholder } from "@tiptap/extensions";
+import { all, createLowlight } from "lowlight";
+import js from "highlight.js/lib/languages/javascript";
+import { Color, TextStyle } from "@tiptap/extension-text-style";
+
+import Heading from "@tiptap/extension-heading";
 import {
   Play,
   RotateCcw,
@@ -7,6 +22,7 @@ import {
   ChevronRight,
   GripVertical,
   CloudUpload,
+  Save,
 } from "lucide-react";
 import {
   Button,
@@ -19,10 +35,15 @@ import {
   CardHeader,
   Tooltip,
   Spinner,
+  Skeleton,
+  addToast,
+  code,
 } from "@heroui/react";
+import { supabase } from "../supabase-client";
 import Editor from "@monaco-editor/react";
-import { getAssignmentDetails } from "./api";
+import { getAssignmentDetails, saveAssignment } from "./api";
 import { executeCode } from "../components/editor/api";
+import "../components/assignment/RichText/editor-styles.css"; // Import highlight.js theme
 import {
   Modal,
   ModalContent,
@@ -32,6 +53,7 @@ import {
   useDisclosure,
 } from "@heroui/react";
 import CodeEditor from "../components/editor/code-editor";
+import { RichTextEditor } from "../components/assignment/RichText/rich-description";
 
 export const CodingInterface = ({ session, id }) => {
   const [activeTab, setActiveTab] = useState("description");
@@ -43,6 +65,12 @@ export const CodingInterface = ({ session, id }) => {
   const [topHeight, setTopHeight] = useState(65); // percentage of right panel
   const [time, setTime] = useState("-");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [initialCode, setInitialCode] = useState("");
+  const [formData, setFormData] = useState({
+    submitted_code: "",
+  });
 
   const [assignmentData, setAssignmentData] = useState(null);
   const fetchDataForAssignment = useCallback(async () => {
@@ -50,15 +78,101 @@ export const CodingInterface = ({ session, id }) => {
       console.log("No assignment ID provided.");
       return;
     }
+    if (sessionStorage.getItem(`assignment-${id}`)) {
+      setIsLoading(false);
+      console.log("Loading assignment data from session storage for ID:", id);
+      console.log(
+        "Assignment data in session storage:",
+        sessionStorage.getItem(`assignment-${id}`)
+      );
+      const savedData = sessionStorage.getItem(`assignment-${id}`);
+      console.log("Saved data:", savedData);
+      if (savedData) {
+        console.log("Parsing saved data from session storage...");
+        setAssignmentData(JSON.parse(savedData));
+        return;
+      }
+    } else {
+      console.log("No assignment data found in session storage for ID:", id);
+    }
     try {
       console.log("Fetching assignment data...", id);
-
+      setIsLoading(true);
       const data = await getAssignmentDetails(id);
       setAssignmentData(data);
+      setInitialCode(data.code_template || "");
+      console.log("Initial code set:", data.code_template || "");
+      console.log("Assignment data fetched:", data);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching assignment data:", error);
     }
-  }, [id]);
+  }, []);
+
+  const saveAssignmentData = async (isSubmit) => {
+    const submit = isSubmit || false;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const student_id = user?.id;
+    console.log("Current user ID:", student_id);
+
+    console.log("Attempting to save assignment data:", assignmentData);
+    setSaving(true);
+    const data = await saveAssignment(
+      editorRef?.current?.getValue(),
+      student_id,
+      id,
+      submit
+    );
+    if (data) {
+      setSaving(false);
+      if (submit) {
+        console.log("Assignment data submitted successfully:", data);
+
+        addToast({
+          title: "Assignment Submitted",
+          description: "Your assignment has been submitted successfully.",
+          status: "success",
+          duration: 3000,
+        });
+      } else {
+        console.log("Assignment data saved successfully:", data);
+
+        addToast({
+          title: "Assignment Saved",
+          description: "Your assignment progress has been saved.",
+          status: "success",
+          duration: 3000,
+        });
+      }
+    } else {
+      setSaving(false);
+      if (submit) {
+        console.error("Failed to submit assignment data.");
+        addToast({
+          title: "Submission Failed",
+          description: "There was an error submitting your assignment.",
+          status: "error",
+          duration: 3000,
+          color: "danger",
+          variant: "bordered",
+        });
+      } else {
+        console.error("Failed to save assignment data.");
+        addToast({
+          title: "Save Failed",
+          description: "There was an error saving your assignment progress.",
+          status: "error",
+          duration: 3000,
+          color: "danger",
+          variant: "bordered",
+        });
+      }
+    }
+    setSaving(false);
+  };
 
   React.useEffect(() => {
     fetchDataForAssignment();
@@ -78,7 +192,18 @@ export const CodingInterface = ({ session, id }) => {
     []
   );
   const handleResetCode = () => {
-    editorRef.current?.setValue(assignment.codeTemplate);
+    if (initialCode) {
+      editorRef.current?.setValue(initialCode);
+    } else {
+      addToast({
+        title: "No initial code available",
+        description:
+          "There is no initial code to reset to. This may be an error",
+        duration: 3000,
+        color: "warning",
+        variant: "flat",
+      });
+    }
   };
   const [output, setOutput] = useState(null);
 
@@ -150,369 +275,409 @@ export const CodingInterface = ({ session, id }) => {
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  const handleRun = () => {
-    setIsRunning(true);
-    setTimeout(() => setIsRunning(false), 2000);
+  const handleSubmit = () => {
+    console.log("Submitting assignment...", assignmentData);
+    // send code to backend
   };
 
-  const handleSubmit = () => {
-    setIsSubmitting(true);
-    setTimeout(() => setIsSubmitting(false), 3000);
+  // // track user refreshing or going back.
+  React.useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (editorRef.current?.getValue() != assignmentData?.code_template) {
+        const updatedData = {
+          ...assignmentData,
+          code_template: editorRef.current?.getValue(),
+        };
+        console.log("Saving assignment data to session storage:", updatedData);
+
+        sessionStorage.setItem(`assignment-${id}`, JSON.stringify(updatedData));
+
+        event.preventDefault();
+        // Modern browsers show a generic message and ignore the custom one.
+        event.returnValue = "hello";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [id, assignmentData, editorRef]);
+
+  const lowlight = createLowlight(all); // You can also use `common` or individual
+  lowlight.register("javascript", js);
+  const extensions = [
+    StarterKit.configure({
+      bulletList: false,
+      codeBlock: false,
+      heading: false,
+    }),
+    Placeholder.configure({
+      placeholder: "Enter assignment guidelines",
+      showOnlyCurrent: true,
+      HTMLAttributes: {
+        class: "text-default-400 bg-red-500 italic",
+      },
+    }),
+
+    // Inline formatting
+    Underline,
+    Superscript,
+    Link.configure({
+      openOnClick: false,
+      HTMLAttributes: {
+        class: "text-primary underline cursor-pointer",
+      },
+    }),
+
+    // Images (base64 allowed)
+    Image.configure({
+      allowBase64: true,
+      HTMLAttributes: {
+        class: "rounded-md max-w-full",
+      },
+    }),
+
+    // Bullet list (we disabled it above, so re‐enable with custom styles)
+    BulletList.configure({
+      HTMLAttributes: {
+        class: "list-disc pl-6",
+      },
+    }),
+    ListItem.configure({
+      HTMLAttributes: {
+        class: "my-2 ",
+      },
+    }),
+
+    // Code block with syntax highlighting
+    CodeBlockLowlight.configure({
+      lowlight,
+      defaultLanguage: "javascript",
+      languageClassPrefix: "language-",
+      HTMLAttributes: {
+        class:
+          "bg-gray-900 rounded-md p-4 my-2 font-mono text-sm overflow-x-auto",
+      },
+    }),
+
+    Heading.configure({
+      levels: [1, 2],
+      HTMLAttributes: {
+        class: "prose prose-slate dark:prose-invert my-4",
+      },
+    }),
+    TextStyle,
+    Color.configure({
+      types: ["textStyle"],
+    }),
+  ];
+  const convertJsonToHtml = (jsonContent) => {
+    if (!jsonContent) {
+      return "";
+    }
+
+    // Use TipTap's utility to generate an HTML string from the JSON
+    return generateHTML(jsonContent, extensions);
   };
+  const descriptionHtml = convertJsonToHtml(assignmentData?.description);
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
-      {/* Left Panel - Problem Description */}
-      <Card
-        className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/40"
-        style={{ width: `${leftWidth}%` }}
-      >
-        {/* Header Tabs */}
-        <CardHeader className="pb-0 pt-4 px-2 border-b border-white/10 bg-black/20 rounded-t-2xl min-h-[50px]">
-          <Tabs
-            selectedKey={activeTab}
-            onSelectionChange={setActiveTab}
-            aria-label="Problem Sections"
-            color="secondary"
-            variant="underlined"
-            className="font-medium"
-          >
-            {["description", "submissions", "hints"].map((tab) => (
-              <Tab
-                key={tab}
-                title={tab.charAt(0).toUpperCase() + tab.slice(1)}
-              />
-            ))}
-          </Tabs>
-        </CardHeader>
-
-        {/* Problem Content */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <div className="space-y-8">
-            {/* Title and Difficulty */}
-            <div className="space-y-4">
-              <h1 className="text-3xl font-bold text-white">1. Three Sum</h1>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                  Easy
-                </span>
-                <span className="text-gray-400 text-sm">✓ 4.2M</span>
-                <span className="text-gray-400 text-sm">📝 8.9M</span>
-                <span className="text-yellow-400 text-sm">⭐ 85.2%</span>
-              </div>
+    <form>
+      <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
+        {/* Left Panel - Problem Description */}
+        <Card
+          className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/40"
+          style={{ width: `${leftWidth}%` }}
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Spinner color="secondary" />
             </div>
+          ) : (
+            // FIX #1: This wrapper div must become a flex container that fills the card.
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <CardHeader className="pb-0 pt-4 px-2 border-b border-white/10 bg-black/20 rounded-t-2xl min-h-[50px]">
+                <Tabs
+                  selectedKey={activeTab}
+                  onSelectionChange={setActiveTab}
+                  aria-label="Problem Sections"
+                  color="secondary"
+                  variant="underlined"
+                  className="font-medium"
+                >
+                  {["description", "submissions", "hints"].map((tab) => (
+                    <Tab
+                      key={tab}
+                      title={tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    />
+                  ))}
+                </Tabs>
+              </CardHeader>
 
-            {/* Problem Description */}
-            <div className="space-y-5 text-gray-300 leading-relaxed">
-              <p>
-                Given an array of integers{" "}
-                <code className="bg-gray-800/60 px-2 py-1 rounded-lg text-orange-300 font-mono text-sm">
-                  nums
-                </code>{" "}
-                and an integer{" "}
-                <code className="bg-gray-800/60 px-2 py-1 rounded-lg text-orange-300 font-mono text-sm">
-                  target
-                </code>
-                , return{" "}
-                <em className="text-blue-300">
-                  indices of the two numbers such that they add up to target
-                </em>
-                .
-              </p>
-              <p>
-                You may assume that each input would have{" "}
-                <strong className="text-white">exactly one solution</strong>,
-                and you may not use the same element twice.
-              </p>
-              <p>You can return the answer in any order.</p>
-            </div>
-
-            {/* Examples */}
-            <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-white">Examples</h3>
-
-              <div className="space-y-4">
-                <div className="bg-gray-800/40 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-                  <h4 className="font-semibold text-gray-200 mb-4">
-                    Example 1:
-                  </h4>
-                  <div className="space-y-2 text-sm font-mono">
-                    <div>
-                      <span className="text-gray-400">Input:</span>{" "}
-                      <span className="text-blue-300">
-                        nums = [2,7,11,15], target = 9
+              {/* Problem Content */}
+              {/* FIX #2: Remove h-full. The flex-1 class will now work correctly and is all you need. */}
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                {/* You can remove the min-h-[1000px] once you see it scrolling */}
+                <div className="space-y-8">
+                  {/* Title and Difficulty */}
+                  <div className="space-y-4">
+                    <h1 className="text-3xl font-bold text-white">
+                      {assignmentData?.title || "Assignment Title"}
+                    </h1>
+                    <div className="flex items-center gap-3">
+                      <span className="px-3 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                        Easy
                       </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Output:</span>{" "}
-                      <span className="text-emerald-300">[0,1]</span>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-700/50">
-                      <span className="text-gray-400">Explanation:</span>{" "}
-                      <span className="text-gray-300">
-                        Because nums[0] + nums[1] == 9, we return [0, 1].
-                      </span>
+                      <span className="text-gray-400 text-sm">✓ 4.2M</span>
+                      <span className="text-gray-400 text-sm">📝 8.9M</span>
+                      <span className="text-yellow-400 text-sm">⭐ 85.2%</span>
                     </div>
                   </div>
-                </div>
 
-                <div className="bg-gray-800/40 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-                  <h4 className="font-semibold text-gray-200 mb-4">
-                    Example 2:
-                  </h4>
-                  <div className="space-y-2 text-sm font-mono">
-                    <div>
-                      <span className="text-gray-400">Input:</span>{" "}
-                      <span className="text-blue-300">
-                        nums = [3,2,4], target = 6
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Output:</span>{" "}
-                      <span className="text-emerald-300">[1,2]</span>
-                    </div>
+                  {/* The content that will overflow and cause scrolling */}
+                  <div className="space-y-4">
+                    <div
+                      dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                    ></div>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Constraints */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white">Constraints</h3>
-              <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30">
-                <ul className="space-y-2 text-gray-300 text-sm">
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    2 ≤ nums.length ≤ 10⁴
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    -10⁹ ≤ nums[i] ≤ 10⁹
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    -10⁹ ≤ target ≤ 10⁹
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    Only one valid answer exists.
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          )}
+        </Card>
+        {/* Vertical Resize Handle */}
+        <div
+          className="w-1.5 bg-white/10 hover:bg-purple-500/50 active:bg-purple-500/50 cursor-col-resize rounded-full transition-colors duration-200 flex items-center justify-center group"
+          onMouseDown={handleMouseDown("vertical")}
+        >
+          <GripVertical
+            size={16}
+            className="text-white/30 group-hover:text-blue-400/70 transition-colors"
+          />
         </div>
-      </Card>
 
-      {/* Vertical Resize Handle */}
-      <div
-        className="w-1.5 bg-white/10 hover:bg-purple-500/50 active:bg-purple-500/50 cursor-col-resize rounded-full transition-colors duration-200 flex items-center justify-center group"
-        onMouseDown={handleMouseDown("vertical")}
-      >
-        <GripVertical
-          size={16}
-          className="text-white/30 group-hover:text-blue-400/70 transition-colors"
-        />
-      </div>
+        {/* Right Panel - Code Editor and Console */}
+        <Card
+          className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
+          style={{ width: `${100 - leftWidth - 1}%` }}
+        >
+          {/* Code Editor Section */}
+          <div style={{ height: `${topHeight}%` }} className="flex flex-col">
+            {/* Code Editor Header */}
+            <CardHeader className="flex items-center justify-between  py-2 px-6 border-b border-white/10 bg-black/20 rounded-t-2xl h-14">
+              <Select
+                defaultSelectedKeys={[`${assignmentData?.language || "java"}`]}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                className="bg-gray-800/60 text-white w-36 rounded-lg  "
+                size="sm"
+                isDisabled
+              >
+                <SelectItem key={"python"}>🐍 Python</SelectItem>
+                <SelectItem key={"java"}>☕ Java</SelectItem>
+              </Select>
+              <div className="flex items-center gap-2">
+                <Tooltip content="Reset Code" color="danger">
+                  <Button
+                    onPress={handleResetCode}
+                    isIconOnly
+                    variant="light"
+                    className=" hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                    size="sm"
+                  >
+                    <RotateCcw
+                      size={16}
+                      className="text-gray-400 group-hover:text-white"
+                    />
+                  </Button>
+                </Tooltip>
 
-      {/* Right Panel - Code Editor and Console */}
-      <Card
-        className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
-        style={{ width: `${100 - leftWidth - 1}%` }}
-      >
-        {/* Code Editor Section */}
-        <div style={{ height: `${topHeight}%` }} className="flex flex-col">
-          {/* Code Editor Header */}
-          <CardHeader className="flex items-center justify-between  py-2 px-6 border-b border-white/10 bg-black/20 rounded-t-2xl h-14">
-            <Select
-              defaultSelectedKeys={["🐍 Python"]}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="bg-gray-800/60 text-white w-36 rounded-lg  "
-              size="sm"
-              isDisabled
-            >
-              <SelectItem key={"🐍 Python"}>🐍 Python</SelectItem>
-              <SelectItem key="java">☕ Java</SelectItem>
-            </Select>
-            <div className="flex items-center gap-2">
-              <Tooltip content="Reset Code" color="danger">
                 <Button
-                  onPress={handleResetCode}
                   isIconOnly
                   variant="light"
                   className=" hover:bg-white/10 rounded-xl transition-all duration-200 group"
                   size="sm"
                 >
-                  <RotateCcw
+                  <Settings
                     size={16}
                     className="text-gray-400 group-hover:text-white"
                   />
                 </Button>
-              </Tooltip>
+              </div>
+            </CardHeader>
 
-              <Button
-                isIconOnly
-                variant="light"
-                className=" hover:bg-white/10 rounded-xl transition-all duration-200 group"
-                size="sm"
+            {/* Code Editor */}
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Spinner />
+              </div>
+            ) : (
+              <div className="flex-1 bg-black/30 pt-2">
+                <CodeEditor
+                  language={selectedLanguage || "java"}
+                  editorRef={editorRef}
+                  role="student"
+                  // TODO : make this dynamic
+                  disableMenu={true}
+                  starterCode={assignmentData?.code_template || ""}
+                  initialLockedLines={new Set([])}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Horizontal Resize Handle */}
+          <div
+            className="h-1.5 bg-white/10 hover:bg-blue-400/50 cursor-row-resize transition-colors duration-200 flex items-center justify-center group"
+            onMouseDown={handleMouseDown("horizontal")}
+          >
+            <div className="w-8 h-0.5 bg-white/30 group-hover:bg-blue-400/70 rounded-full transition-colors"></div>
+          </div>
+
+          {/* Console Section */}
+          <div
+            style={{ height: `${100 - topHeight}%` }}
+            className="flex flex-col"
+          >
+            {/* Console Tabs */}
+            <div className="px-2 pt-1 border-b border-white/10 bg-black/20">
+              <Tabs
+                selectedKey={consoleTab}
+                onSelectionChange={setConsoleTab}
+                defaultSelectedKey={"console"}
+                aria-label="Console Sections"
+                color="secondary"
+                variant="underlined"
+                className="font-medium"
               >
-                <Settings
-                  size={16}
-                  className="text-gray-400 group-hover:text-white"
-                />
-              </Button>
+                {[
+                  {
+                    key: "console",
+                    id: "console",
+                    label: "Console",
+                    icon: "💻",
+                  },
+                ].map((tab) => (
+                  <Tab
+                    key="console"
+                    title={
+                      <span className="flex items-center gap-2">
+                        {tab.icon}
+                        {tab.label}
+                      </span>
+                    }
+                  />
+                ))}
+              </Tabs>
             </div>
-          </CardHeader>
 
-          {/* Code Editor */}
-          <div className="flex-1 bg-black/30 pt-2">
-            <CodeEditor
-              language={selectedLanguage || "java"}
-              editorRef={editorRef}
-              role="student"
-              // TODO : make this dynamic
-              disableMenu={true}
-              starterCode={
-                "this is starter code \n and it is on multiple lines"
-              }
-              initialLockedLines={new Set([])}
-            />
-          </div>
-        </div>
-
-        {/* Horizontal Resize Handle */}
-        <div
-          className="h-1.5 bg-white/10 hover:bg-blue-400/50 cursor-row-resize transition-colors duration-200 flex items-center justify-center group"
-          onMouseDown={handleMouseDown("horizontal")}
-        >
-          <div className="w-8 h-0.5 bg-white/30 group-hover:bg-blue-400/70 rounded-full transition-colors"></div>
-        </div>
-
-        {/* Console Section */}
-        <div
-          style={{ height: `${100 - topHeight}%` }}
-          className="flex flex-col"
-        >
-          {/* Console Tabs */}
-          <div className="px-2 pt-1 border-b border-white/10 bg-black/20">
-            <Tabs
-              selectedKey={consoleTab}
-              onSelectionChange={setConsoleTab}
-              defaultSelectedKey={"console"}
-              aria-label="Console Sections"
-              color="secondary"
-              variant="underlined"
-              className="font-medium"
-            >
-              {[
-                { key: "console", id: "console", label: "Console", icon: "💻" },
-              ].map((tab) => (
-                <Tab
-                  key="console"
-                  title={
-                    <span className="flex items-center gap-2">
-                      {tab.icon}
-                      {tab.label}
-                    </span>
-                  }
-                />
-              ))}
-            </Tabs>
-          </div>
-
-          {/* Console Content */}
-          <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
-            <div className=" text-gray-200 text-lg">
-              {output != null ? (
-                <div>Output: {output}</div>
-              ) : (
-                'Click "Run Code" to see output here...'
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Bar */}
-        <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
-          <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
-            ⏱️ {time}
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              onPress={runCode}
-              disabled={isRunning}
-              startContent={<Play size={16} />}
-              color="secondary"
-              variant="flat"
-              className="min-w-[120px]"
-            >
-              {isRunning ? <Spinner /> : "Run Code"}
-            </Button>
-            <Button
-              onPress={onOpen}
-              disabled={isSubmitting}
-              startContent={<CloudUpload size={16} />}
-              color="success"
-              variant="flat"
-              className="min-w-[120px] "
-            >
-              Submit Assignment
-            </Button>
-
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-              <ModalContent>
-                {(onClose) => (
-                  <>
-                    <ModalHeader className="flex flex-col gap-1">
-                      Submit Assignment
-                    </ModalHeader>
-                    <ModalBody>
-                      <Card className="border-spacing-3 border-large border-yellow-400 p-5 bg-zinc-850">
-                        <p className="text-yellow-500 ">
-                          Are you sure you want to submit this assignment? This
-                          action cannot be undone.
-                        </p>
-                      </Card>
-                    </ModalBody>
-                    <ModalFooter>
-                      <Button color="danger" variant="light" onPress={onClose}>
-                        Close
-                      </Button>
-                      <Button
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
-                        startContent={<CloudUpload size={16} />}
-                        color="success"
-                        variant="flat"
-                        className="min-w-[120px]"
-                      >
-                        {isSubmitting ? <Spinner /> : "Submit Assignment"}
-                      </Button>
-                    </ModalFooter>
-                  </>
+            {/* Console Content */}
+            <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
+              <div className=" text-gray-200 text-lg">
+                {output != null ? (
+                  <div>Output: {output}</div>
+                ) : (
+                  'Click "Run Code" to see output here...'
                 )}
-              </ModalContent>
-            </Modal>
+              </div>
+            </div>
           </div>
-        </div>
-      </Card>
 
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
-    </div>
+          {/* Action Bar */}
+          <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
+            <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
+              ⏱️ {time}
+            </div>
+            <div className="flex items-center gap-4">
+              <Button
+                onPress={runCode}
+                disabled={isRunning}
+                startContent={<Play size={16} />}
+                color="secondary"
+                variant="flat"
+                className="min-w-[120px]"
+              >
+                {isRunning ? <Spinner /> : "Run Code"}
+              </Button>
+              <Button
+                color="primary"
+                variant="flat"
+                onPress={() => saveAssignmentData(false)}
+                startContent={<Save size={16} />}
+              >
+                {saving ? <Spinner /> : "Save Progress"}
+              </Button>
+              <Button
+                onPress={onOpen}
+                disabled={isSubmitting}
+                startContent={<CloudUpload size={16} />}
+                color="success"
+                variant="flat"
+                className="min-w-[120px] "
+              >
+                Submit Assignment
+              </Button>
+
+              <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+                <ModalContent>
+                  {(onClose) => (
+                    <>
+                      <ModalHeader className="flex flex-col gap-1">
+                        Submit Assignment
+                      </ModalHeader>
+                      <ModalBody>
+                        <Card className="border-spacing-3 border-large border-yellow-400 p-5 bg-zinc-850">
+                          <p className="text-yellow-500 ">
+                            Are you sure you want to submit this assignment?
+                            This action cannot be undone.
+                          </p>
+                        </Card>
+                      </ModalBody>
+                      <ModalFooter>
+                        <Button
+                          color="danger"
+                          variant="light"
+                          onPress={onClose}
+                        >
+                          Close
+                        </Button>
+                        <Button
+                          onPress={handleSubmit}
+                          disabled={isSubmitting}
+                          startContent={<CloudUpload size={16} />}
+                          color="success"
+                          variant="flat"
+                          className="min-w-[120px]"
+                        >
+                          {isSubmitting ? <Spinner /> : "Submit Assignment"}
+                        </Button>
+                      </ModalFooter>
+                    </>
+                  )}
+                </ModalContent>
+              </Modal>
+            </div>
+          </div>
+        </Card>
+
+        <style jsx>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+          }
+        `}</style>
+      </div>
+    </form>
   );
 };
