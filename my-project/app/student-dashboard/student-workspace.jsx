@@ -13,6 +13,7 @@ import { Placeholder } from "@tiptap/extensions";
 import { all, createLowlight } from "lowlight";
 import js from "highlight.js/lib/languages/javascript";
 import { Color, TextStyle } from "@tiptap/extension-text-style";
+import Countdown from "react-countdown";
 
 import Heading from "@tiptap/extension-heading";
 import {
@@ -119,7 +120,11 @@ export const CodingInterface = ({ session, id }) => {
     console.log("Current user ID:", student_id);
 
     console.log("Attempting to save assignment data:", assignmentData);
-    setSaving(true);
+    if (isSubmitting) {
+      setIsSubmitting(true);
+    } else {
+      setSaving(true);
+    }
     const data = await saveAssignment(
       editorRef?.current?.getValue(),
       student_id,
@@ -127,7 +132,11 @@ export const CodingInterface = ({ session, id }) => {
       submit
     );
     if (data) {
-      setSaving(false);
+      if (submit) {
+        setIsSubmitting(false);
+      } else {
+        setSaving(false);
+      }
       if (submit) {
         console.log("Assignment data submitted successfully:", data);
 
@@ -135,6 +144,8 @@ export const CodingInterface = ({ session, id }) => {
           title: "Assignment Submitted",
           description: "Your assignment has been submitted successfully.",
           status: "success",
+          color: "success",
+          variant: "bordered",
           duration: 3000,
         });
       } else {
@@ -144,11 +155,17 @@ export const CodingInterface = ({ session, id }) => {
           title: "Assignment Saved",
           description: "Your assignment progress has been saved.",
           status: "success",
+          color: "success",
+          variant: "bordered",
           duration: 3000,
         });
       }
     } else {
-      setSaving(false);
+      if (submit) {
+        setIsSubmitting(false);
+      } else {
+        setSaving(false);
+      }
       if (submit) {
         console.error("Failed to submit assignment data.");
         addToast({
@@ -170,6 +187,9 @@ export const CodingInterface = ({ session, id }) => {
           variant: "bordered",
         });
       }
+    }
+    if (isSubmit) {
+      onOpen(false);
     }
     setSaving(false);
   };
@@ -275,11 +295,6 @@ export const CodingInterface = ({ session, id }) => {
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  const handleSubmit = () => {
-    console.log("Submitting assignment...", assignmentData);
-    // send code to backend
-  };
-
   // // track user refreshing or going back.
   React.useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -383,6 +398,28 @@ export const CodingInterface = ({ session, id }) => {
   };
   const descriptionHtml = convertJsonToHtml(assignmentData?.description);
 
+  const countdownRenderer = ({ days, hours, minutes, seconds, completed }) => {
+    if (completed) {
+      return (
+        <span className="text-red-500 font-bold">Assignment is past due.</span>
+      );
+    } else {
+      const isUrgent = (days = 0 && hours === 0 && minutes < 5)
+        ? "text-red-500 font-bold animate-pulse" // Urgent state styles
+        : ""; // Normal state styles
+
+      const pad = (num) => num.toString().padStart(2, "0");
+      return (
+        <>
+          {" "}
+          <span className={isUrgent}>
+            {days > 0 && `${days}d `}
+            {pad(hours)}h : {pad(minutes)}m : {pad(seconds)}s
+          </span>
+        </>
+      );
+    }
+  };
   return (
     <form>
       <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
@@ -477,6 +514,17 @@ export const CodingInterface = ({ session, id }) => {
                 <SelectItem key={"python"}>🐍 Python</SelectItem>
                 <SelectItem key={"java"}>☕ Java</SelectItem>
               </Select>
+              {assignmentData?.due_at && (
+                <div className="text-sm text-gray-400 font-semibold bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
+                  <Countdown
+                    date={assignmentData?.due_at}
+                    renderer={countdownRenderer}
+                    onComplete={() => {
+                      saveAssignmentData(true);
+                    }} // need to check this !!!!!!
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Tooltip content="Reset Code" color="danger">
                   <Button
@@ -518,6 +566,7 @@ export const CodingInterface = ({ session, id }) => {
                   language={selectedLanguage || "java"}
                   editorRef={editorRef}
                   role="student"
+                  height="100%"
                   // TODO : make this dynamic
                   disableMenu={true}
                   starterCode={assignmentData?.code_template || ""}
@@ -593,30 +642,42 @@ export const CodingInterface = ({ session, id }) => {
               <Button
                 onPress={runCode}
                 disabled={isRunning}
-                startContent={<Play size={16} />}
+                startContent={
+                  (isRunning && <Spinner color="secondary" size="sm" />) || (
+                    <Play size={16} />
+                  )
+                }
                 color="secondary"
                 variant="flat"
-                className="min-w-[120px]"
               >
-                {isRunning ? <Spinner /> : "Run Code"}
+                Run
               </Button>
               <Button
                 color="primary"
                 variant="flat"
                 onPress={() => saveAssignmentData(false)}
-                startContent={<Save size={16} />}
+                startContent={
+                  saving ? (
+                    <Spinner size="sm" color="primary" />
+                  ) : (
+                    <Save size={16} />
+                  )
+                }
               >
-                {saving ? <Spinner /> : "Save Progress"}
+                Save
               </Button>
               <Button
                 onPress={onOpen}
                 disabled={isSubmitting}
-                startContent={<CloudUpload size={16} />}
+                startContent={
+                  (isSubmitting && <Spinner color="success" size="sm" />) || (
+                    <CloudUpload size={16} />
+                  )
+                }
                 color="success"
                 variant="flat"
-                className="min-w-[120px] "
               >
-                Submit Assignment
+                Submit
               </Button>
 
               <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -643,14 +704,17 @@ export const CodingInterface = ({ session, id }) => {
                           Close
                         </Button>
                         <Button
-                          onPress={handleSubmit}
+                          onPress={() => saveAssignmentData(true)}
                           disabled={isSubmitting}
-                          startContent={<CloudUpload size={16} />}
+                          startContent={
+                            (isSubmitting && (
+                              <Spinner color="success" size="sm" />
+                            )) || <CloudUpload size={16} />
+                          }
                           color="success"
                           variant="flat"
-                          className="min-w-[120px]"
                         >
-                          {isSubmitting ? <Spinner /> : "Submit Assignment"}
+                          Submit
                         </Button>
                       </ModalFooter>
                     </>

@@ -70,9 +70,12 @@ export const getAssignmentDetails = async (assignment_id) => {
   }
 };
 
-
 // check for safety purposes
-export const gradeAssignment = async ({ assignment_data, language, testcases }) => {
+export const gradeAssignment = async ({
+  assignment_data,
+  language,
+  testcases,
+}) => {
   const supabase = await createClient();
   const userCode = assignment_data.submitted_code;
 
@@ -133,19 +136,18 @@ export const saveAssignment = async (
   let date = null;
   if (isSubmitting) {
     date = new Date().toISOString(); // Get the current date and time in ISO format
+    console.log("Submitting assignment at:", date);
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("assignment_students")
     .update({ submitted_code: student_code, submitted_at: date })
     .eq("student_id", student_id)
-    .eq("assignment_id", numericAssignmentId)
-    .single();
+    .eq("assignment_id", numericAssignmentId);
   if (error) {
     console.error("Error saving assignment data:", error.message);
     return;
   } else {
-    console.log("Assignment data saved:", data);
-    return data;
+    return "success";
   }
 };
