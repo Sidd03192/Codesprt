@@ -36,7 +36,7 @@ export const StudentAssignments = ({
   const [searchValue, setSearchValue] = React.useState("");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-
+  const [selected, setSelected] = useState("classroom");
   const filteredAssignments = assignments?.filter((assignment) => {
     // add filter functionaity TODO
     if (
@@ -108,7 +108,7 @@ export const StudentAssignments = ({
           </div>
         </CardHeader>
         <CardBody>
-          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6 w-full">
             <Input
               placeholder="Search assignments..."
               startContent={<Icon icon="lucide:search" />}
@@ -116,6 +116,18 @@ export const StudentAssignments = ({
               onValueChange={setSearchValue}
               className="w-full sm:max-w-xs"
             />
+            <Tabs
+              selectedKey={selected}
+              onSelectionChange={setSelected}
+              aria-label="Assignment status"
+              classNames={{
+                base: "w-full sm:w-auto",
+                tabList: "gap-2",
+              }}
+            >
+              <Tab key="classroom" title="Classroom" />
+              <Tab key="stlandalone" title="Standalone" />
+            </Tabs>
           </div>
 
           <div className="space-y-4 ">
@@ -182,21 +194,26 @@ export const StudentAssignments = ({
                             <Button
                               color="secondary"
                               variant="flat"
-                              isDisabled={isAssignmentDone(
-                                assignment.id,
-                                assignment.due_date
-                              )}
                               onPress={() => {
                                 setSelectedAssignment(assignment.assignment_id);
                                 onOpen();
                               }}
+                              startContent={
+                                isAssignmentDone(
+                                  assignment.id,
+                                  assignment.due_date
+                                ) ? (
+                                  <Icon icon="lucide:eye" />
+                                ) : (
+                                  <Icon icon="lucide:edit-3" />
+                                )
+                              }
                             >
-                              <Icon icon="lucide:edit-3" className="mr-1" />
                               {isAssignmentDone(
                                 assignment.id,
                                 assignment.due_date
                               )
-                                ? "Assignment Closed"
+                                ? "View Assignment"
                                 : "Start Assignment"}
                             </Button>
                             <Modal isOpen={isOpen} onOpenChange={onOpenChange}>

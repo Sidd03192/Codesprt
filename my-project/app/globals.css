@@ -15,7 +15,7 @@ body {
 }
 
 .sidebar-item.active {
-  @apply bg-content2 text-foreground-800;
+  @apply bg-zinc-800/60 text-foreground-800;
 }
 
 .sidebar-item-icon {
