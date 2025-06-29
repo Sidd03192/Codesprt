@@ -1,119 +1,41 @@
-import React from "react";
-import { Card, CardBody, CardHeader, Button, Input, Tabs, Tab, Chip, Avatar, Progress } from "@heroui/react";
+import React, { useEffect, useState } from "react";
+import { Card, CardBody, CardHeader, Button, Input, Tabs, Tab, Chip, Avatar, Progress, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, InputOtp } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { getUserCourses, joinClassroom } from "./api";
 
-export const StudentCourses = () => {
-  const [selected, setSelected] = React.useState("current");
-  const [searchValue, setSearchValue] = React.useState("");
-  const courses = [
-    { 
-      id: 1, 
-      name: "Mathematics 101", 
-      code: "MATH101",
-      instructor: "Dr. Robert Chen", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher1",
-      credits: 4,
-      schedule: "Mon, Wed, Fri 10:00 AM - 11:15 AM",
-      location: "Science Building, Room 305",
-      progress: 65,
-      status: "current",
-      description: "Introduction to calculus, limits, derivatives, and integrals with applications to physical sciences and engineering.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=1"
-    },
-    { 
-      id: 2, 
-      name: "Science 202", 
-      code: "SCI202",
-      instructor: "Dr. Sarah Williams", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher2",
-      credits: 4,
-      schedule: "Tue, Thu 1:00 PM - 2:45 PM",
-      location: "Science Building, Room 210",
-      progress: 58,
-      status: "current",
-      description: "Principles of chemistry and physics with laboratory experiments and practical applications.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=2"
-    },
-    { 
-      id: 3, 
-      name: "English 303", 
-      code: "ENG303",
-      instructor: "Prof. James Miller", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher3",
-      credits: 3,
-      schedule: "Mon, Wed 2:00 PM - 3:15 PM",
-      location: "Humanities Building, Room 120",
-      progress: 72,
-      status: "current",
-      description: "Advanced composition and critical reading with emphasis on developing analytical writing skills.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=3"
-    },
-    { 
-      id: 4, 
-      name: "History 101", 
-      code: "HIST101",
-      instructor: "Dr. Emily Thompson", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher4",
-      credits: 3,
-      schedule: "Tue, Thu 10:00 AM - 11:15 AM",
-      location: "Humanities Building, Room 210",
-      progress: 60,
-      status: "current",
-      description: "Survey of world history from ancient civilizations to the modern era with emphasis on cultural developments.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=4"
-    },
-    { 
-      id: 5, 
-      name: "Art & Design", 
-      code: "ART105",
-      instructor: "Prof. Lisa Chen", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher5",
-      credits: 3,
-      schedule: "Fri 9:00 AM - 11:45 AM",
-      location: "Arts Building, Studio 4",
-      progress: 70,
-      status: "current",
-      description: "Introduction to principles of design, color theory, and basic drawing techniques.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=5"
-    },
-    { 
-      id: 6, 
-      name: "Computer Science 101", 
-      code: "CS101",
-      instructor: "Dr. Michael Lee", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher6",
-      credits: 4,
-      schedule: "Mon, Wed 9:00 AM - 10:45 AM",
-      location: "Technology Building, Lab 3",
-      progress: 100,
-      status: "past",
-      description: "Introduction to programming concepts, algorithms, and problem-solving techniques.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=6"
-    },
-    { 
-      id: 7, 
-      name: "Psychology 202", 
-      code: "PSYC202",
-      instructor: "Dr. Amanda Garcia", 
-      instructorAvatar: "https://img.heroui.chat/image/avatar?w=64&h=64&u=teacher7",
-      credits: 3,
-      schedule: "Tue, Thu 3:00 PM - 4:15 PM",
-      location: "Social Sciences Building, Room 105",
-      progress: 100,
-      status: "past",
-      description: "Study of human behavior and mental processes with emphasis on research methods and theories.",
-      image: "https://img.heroui.chat/image/book?w=400&h=200&u=7"
-    }
-  ];
+export const StudentCourses = ({user_id}) => {
+  const [selected, setSelected] = useState("current");
+  const [searchValue, setSearchValue] = useState("");
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [joinCode, setJoinCode] = useState("");
+  const [courses, setCourses] = useState([]);
 
+  const loadCourses = async () => {
+      const courses = await getUserCourses(user_id);
+      console.log("courses:", courses);
+      setCourses(courses);
+  };
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const handleJoinClassroom = async () => {
+      await joinClassroom(joinCode, user_id);
+      await loadCourses(); // reload from DB
+      onClose();
+      setJoinCode("");
+  };
+  console.log("user id id:", user_id);
   const filteredCourses = courses.filter(course => {
+    course.status = "current"; //need to change this
     if (selected === "current" && course.status !== "current") return false;
     if (selected === "past" && course.status !== "past") return false;
-    if (searchValue && !course.name.toLowerCase().includes(searchValue.toLowerCase()) && 
+    if (searchValue && !course.name.toLowerCase().includes(searchValue.toLowerCase()) &&
         !course.code.toLowerCase().includes(searchValue.toLowerCase())) return false;
     return true;
   });
-
+  console.log("filteredCourses:", filteredCourses);
   return (
     <div className="space-y-6">
       <Card className="border border-divider">
@@ -127,9 +49,16 @@ export const StudentCourses = () => {
               <Icon icon="lucide:filter" className="mr-1" />
               Filter
             </Button>
-            <Button color="primary">
+            <Button color="primary" variant="flat">
               <Icon icon="lucide:calendar" className="mr-1" />
               Schedule
+            </Button>
+            <Button
+              color="primary"
+              startContent={<Icon icon="lucide:plus" />}
+              onPress={onOpen}
+            >
+              Join Course
             </Button>
           </div>
         </CardHeader>
@@ -245,6 +174,37 @@ export const StudentCourses = () => {
           </div>
         </CardBody>
       </Card>
+
+      {/* Join Course Modal */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Join a Course</ModalHeader>
+              <ModalBody>
+                <p className="text-center mb-4">Enter the 5-digit course code provided by your instructor.</p>
+                <InputOtp 
+                  length={5}
+                  value={joinCode}
+                  onValueChange={setJoinCode}
+                  classNames={{
+                    input: "w-12 h-12 text-2xl",
+                    inputWrapper: "gap-2"
+                  }}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button color="primary" onPress={handleJoinClassroom} isDisabled={joinCode.length !== 5}>
+                  Join Course
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

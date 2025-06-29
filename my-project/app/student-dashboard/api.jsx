@@ -1,7 +1,6 @@
 // file: app/actions.ts
 
 "use server";
-
 import { createClient } from "../../utils/supabase/server";
 import { executeCode } from "../components/editor/api";
 // This action fetches assignments for a given student.
@@ -68,6 +67,87 @@ export const getAssignmentDetails = async (assignment_id) => {
     console.log("Assignment details:", data);
     return data;
   }
+};
+
+export const joinClassroom = async (joinCode, userId) => {
+  console.log("hello");
+  const supabase = await createClient();
+  console.log("User ID:", userId);
+  const { data: classes, error: fetchError } = await supabase
+    .from("classes")
+    .select("*")
+    .eq("join_id", joinCode)
+    .limit(1);
+
+  if (fetchError || classes.length === 0) {
+    console.error("Invalid join code or DB error:", fetchError?.message);
+    return null;
+  }
+
+  const course = classes[0];
+  const { data: existingJoin } = await supabase
+    .from("enrollments")
+    .select("*")
+    .eq("student_id", userId)
+    .eq("class_id", course.id)
+    .maybeSingle();
+
+  if (existingJoin) {
+    console.log("User already joined this course");
+    return null; // check if this makes sense
+  }
+  /*const { data: emailData, error: emailError } = await supabase
+    .from("users")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (emailError) {
+    console.error("Error fetching email:", emailError.message);
+    return null;
+  }
+  const email = emailData.email;*/
+
+  const { error: insertError } = await supabase.from("enrollments").insert({
+    student_id: userId,
+    enrolled_at: new Date(),
+    class_id: course.id,
+    full_name: "john doe",
+    email: "johndoe@gmail.com",
+  });
+
+  if (insertError) {
+    console.error("Error joining course:", insertError.message);
+    return null;
+  }
+  return course;
+};
+
+export const getUserCourses = async (userId) => {
+  const supabase = await createClient();
+  console.log("userId: ", userId);
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("class_id")
+    .eq("student_id", userId);
+  if (error) {
+    console.error("Error fetching user courses:", error.message);
+    return null;
+  }
+  if (data.length === 0) {
+    return [];
+  }
+  const course_ids = data.map((entry) => entry.class_id);
+  const { data: courses, error: coursesError } = await supabase
+    .from("classes")
+    .select("*")
+    .in("id", course_ids);
+
+  if (coursesError) {
+    console.error("Error fetching courses:", coursesError.message);
+    return null;
+  }
+
+  return courses;
 };
 
 // check for safety purposes

@@ -41,7 +41,7 @@ export default function StudentDashboard() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
-        console.log(session);
+        console.log("session:", session);
       }
     );
     return () => {
@@ -158,7 +158,11 @@ export default function StudentDashboard() {
       case "grades":
         return <StudentGrades />;
       case "courses":
-        return <StudentCourses />;
+        return session?.user ? (
+          <StudentCourses user_id={session.user.id} />
+        ) : (
+          <div>Loading session...</div>
+        );
       default:
         return <StudentOverview />;
     }
@@ -169,6 +173,7 @@ export default function StudentDashboard() {
     console.log("Changing page to:", page);
     setActivePage(page);
   };
+  
 
   // Toggle between teacher and student view (for demo purposes)
   const toggleUserType = () => {
