@@ -37,6 +37,15 @@ export const StudentAssignments = ({
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [selectedAssignment, setSelectedAssignment] = useState(null);
 
+  const filteredAssignments = assignments?.filter((assignment) => {
+    // add filter functionaity TODO
+    if (
+      searchValue &&
+      !assignment.title.toLowerCase().includes(searchValue.toLowerCase())
+    )
+      return false;
+    return true;
+  });
   const isAssignmentDone = (id, date) => Date.now() > new Date(date).getTime();
 
   const handleRefreshClick = () => {
@@ -116,8 +125,8 @@ export const StudentAssignments = ({
               </div>
             ) : (
               <div className="space-y-2">
-                {assignments && assignments.length > 0 ? (
-                  assignments.map((assignment) => (
+                {filteredAssignments && filteredAssignments.length > 0 ? (
+                  filteredAssignments.map((assignment) => (
                     <Card
                       key={assignment.id}
                       className="border border-divider  "

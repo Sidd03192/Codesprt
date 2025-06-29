@@ -55,6 +55,7 @@ import {
 } from "@heroui/react";
 import CodeEditor from "../components/editor/code-editor";
 import { RichTextEditor } from "../components/assignment/RichText/rich-description";
+import { Icon } from "@iconify/react";
 
 export const CodingInterface = ({ session, id }) => {
   const [activeTab, setActiveTab] = useState("Description");
@@ -497,18 +498,15 @@ export const CodingInterface = ({ session, id }) => {
                 </div>
               )}
               {activeTab === "Results & Submissions" && (
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                  <div className="space-y-8">
-                    <h1 className="text-3xl font-bold text-white">
-                      Results & Submissions
-                    </h1>
-                    <div className="space-y-4">
-                      <p className="text-gray-400">
-                        This section will show your submission history and
-                        results.
-                      </p>
-                      <Skeleton className="h-48 w-full" />
-                    </div>
+                <div className="w-full h-full flex justify-center items-center p-8 custom-scrollbar">
+                  <div className="space-y-4 text-center">
+                    <Icon
+                      icon="lucide:bubbles"
+                      className="mx-auto text-6xl text-foreground-400 mb-2"
+                    />
+                    <p className="text-gray-400">
+                      Relaxxx.... No grades or results available yet.
+                    </p>
                   </div>
                 </div>
               )}
