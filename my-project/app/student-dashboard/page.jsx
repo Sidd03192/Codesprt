@@ -20,7 +20,6 @@ import { StudentCourses } from "./courses";
 import { getAssignmentsData } from "./api";
 import { insertUserIfNew } from "../dashboard/api";
 
-
 export default function StudentDashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -53,7 +52,6 @@ export default function StudentDashboard() {
     insertUserIfNew("student");
   }, []);
 
-  
   const handleRefresh = () => {
     console.log("Refreshing assignments...");
     // include logic to put a cooldown on the refresh button
@@ -173,7 +171,6 @@ export default function StudentDashboard() {
     console.log("Changing page to:", page);
     setActivePage(page);
   };
-  
 
   // Toggle between teacher and student view (for demo purposes)
   const toggleUserType = () => {
@@ -204,7 +201,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background">
+    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]">
       {/* Add navbar at the top */}
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
@@ -212,7 +209,7 @@ export default function StudentDashboard() {
           <div
             className={`h-full transition-all duration-300 ${
               isSidebarCollapsed ? "w-16" : "w-64"
-            } border-r border-divider bg-content1`}
+            } border-r border-divider bg-zinc-900/50`}
           >
             <Sidebar
               isCollapsed={isSidebarCollapsed}
@@ -272,7 +269,7 @@ export default function StudentDashboard() {
         {/* Main Content */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header - Modified to remove duplicate functionality now in navbar */}
-          <header className="flex h-14 items-center border-b border-divider px-4">
+          <header className="flex h-14 items-center border-b border-divider px-4 bg-zinc-900/50">
             <Button
               isIconOnly
               variant="light"
@@ -312,7 +309,9 @@ export default function StudentDashboard() {
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 overflow-auto p-4">{renderActivePage()}</main>
+          <main className="flex-1 overflow-auto p-4  ">
+            {renderActivePage()}
+          </main>
         </div>
       </div>
     </div>

@@ -195,7 +195,8 @@ export const saveAssignment = async (
   student_code,
   student_id,
   assignment_id,
-  isSubmitting
+  isSubmitting,
+  submitted_at
 ) => {
   const supabase = await createClient();
 
@@ -214,14 +215,16 @@ export const saveAssignment = async (
     return;
   }
   let date = null;
+
+  let satus = isSubmitting ? "submitted" : "draft";
   if (isSubmitting) {
-    date = new Date().toISOString(); // Get the current date and time in ISO format
+    date = submitted_at; // Get the current date and time in ISO format
     console.log("Submitting assignment at:", date);
   }
 
   const { error } = await supabase
     .from("assignment_students")
-    .update({ submitted_code: student_code, submitted_at: date })
+    .update({ submitted_code: student_code, submitted_at: date, satus: satus })
     .eq("student_id", student_id)
     .eq("assignment_id", numericAssignmentId);
   if (error) {

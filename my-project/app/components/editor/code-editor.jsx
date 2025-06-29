@@ -22,6 +22,7 @@ export default function CodeEditor({
   starterCode,
   height,
   disableMenu,
+  isDisabled,
 }) {
   const monacoRef = useRef(null);
   const monaco = useMonaco();
@@ -576,6 +577,7 @@ export default function CodeEditor({
         lineNumbersMinChars: 3,
         scrollBeyondLastLine: true,
         wordWrap: "on",
+        readOnly: isDisabled,
       }}
     />
   );

@@ -36,6 +36,9 @@ export const StudentAssignments = ({
   const [searchValue, setSearchValue] = React.useState("");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+
+  const isAssignmentDone = (id, date) => Date.now() > new Date(date).getTime();
+
   const handleRefreshClick = () => {
     console.log("Refreshing assignments...");
     handleRefresh();
@@ -74,7 +77,7 @@ export const StudentAssignments = ({
   };
   return (
     <div className="space-y-6">
-      <Card className="border border-divider">
+      <Card className="border border-divider ">
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-2">
             <Icon icon="lucide:file-text" className="text-lg" />
@@ -106,18 +109,18 @@ export const StudentAssignments = ({
             />
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 ">
             {isLoading ? (
               <div className="text-center">
                 <Spinner />
               </div>
             ) : (
-              <div>
+              <div className="space-y-2">
                 {assignments && assignments.length > 0 ? (
                   assignments.map((assignment) => (
                     <Card
                       key={assignment.id}
-                      className="border border-divider hover:bg-purple-600/20"
+                      className="border border-divider  "
                     >
                       <CardBody>
                         <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -169,13 +172,23 @@ export const StudentAssignments = ({
                           <div className="flex items-center gap-2 self-end sm:self-center">
                             <Button
                               color="secondary"
+                              variant="flat"
+                              isDisabled={isAssignmentDone(
+                                assignment.id,
+                                assignment.due_date
+                              )}
                               onPress={() => {
                                 setSelectedAssignment(assignment.assignment_id);
                                 onOpen();
                               }}
                             >
                               <Icon icon="lucide:edit-3" className="mr-1" />
-                              Start Assignment
+                              {isAssignmentDone(
+                                assignment.id,
+                                assignment.due_date
+                              )
+                                ? "Assignment Closed"
+                                : "Start Assignment"}
                             </Button>
                             <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
                               <ModalContent>
@@ -207,7 +220,7 @@ export const StudentAssignments = ({
                                       >
                                         <Button
                                           color="secondary"
-                                          variant="solid"
+                                          variant="flat"
                                           className="min-w-[120px]"
                                           onPress={() =>
                                             console.log(

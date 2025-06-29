@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, act } from "react";
 import { generateHTML } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -57,7 +57,7 @@ import CodeEditor from "../components/editor/code-editor";
 import { RichTextEditor } from "../components/assignment/RichText/rich-description";
 
 export const CodingInterface = ({ session, id }) => {
-  const [activeTab, setActiveTab] = useState("description");
+  const [activeTab, setActiveTab] = useState("Description");
   const [consoleTab, setConsoleTab] = useState("testcases");
   const [selectedLanguage, setSelectedLanguage] = useState();
   const [isRunning, setIsRunning] = useState(false);
@@ -69,6 +69,7 @@ export const CodingInterface = ({ session, id }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [initialCode, setInitialCode] = useState("");
+  const [timeUp, setTimeUp] = useState(false);
   const [formData, setFormData] = useState({
     submitted_code: "",
   });
@@ -91,6 +92,10 @@ export const CodingInterface = ({ session, id }) => {
       if (savedData) {
         console.log("Parsing saved data from session storage...");
         setAssignmentData(JSON.parse(savedData));
+        const due_time = new Date(assignmentData?.due_at).getTime();
+        if (due_time < Date.now()) {
+          setTimeUp(true);
+        }
         return;
       }
     } else {
@@ -105,6 +110,10 @@ export const CodingInterface = ({ session, id }) => {
       console.log("Initial code set:", data.code_template || "");
       console.log("Assignment data fetched:", data);
       setIsLoading(false);
+      const due_time = new Date(assignmentData?.due_at).getTime();
+      if (due_time < Date.now()) {
+        setTimeUp(true);
+      }
     } catch (error) {
       console.error("Error fetching assignment data:", error);
     }
@@ -112,24 +121,35 @@ export const CodingInterface = ({ session, id }) => {
 
   const saveAssignmentData = async (isSubmit) => {
     const submit = isSubmit || false;
+    const due_time = new Date(assignmentData?.due_at).getTime();
+    if (Date.now() - 60 * 300 > due_time || !assignmentData) {
+      console.warn("Assignment is past due, cannot submit."); // one minute buffer
+      setSaving(false);
+
+      return;
+    }
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
     const student_id = user?.id;
     console.log("Current user ID:", student_id);
-
-    console.log("Attempting to save assignment data:", assignmentData);
+    console.log("time ", Date.now().toLocaleString(), "due time", due_time);
+    console.log(" Attempting to save assignment data:", assignmentData);
     if (isSubmitting) {
       setIsSubmitting(true);
     } else {
       setSaving(true);
     }
+    const student_code = editorRef?.current?.getValue()
+      ? editorRef?.current?.getValue()
+      : assignmentData?.code_template;
     const data = await saveAssignment(
-      editorRef?.current?.getValue(),
+      student_code,
       student_id,
       id,
-      submit
+      submit,
+      new Date().toISOString() // Use current date and time for submission
     );
     if (data) {
       if (submit) {
@@ -187,9 +207,10 @@ export const CodingInterface = ({ session, id }) => {
           variant: "bordered",
         });
       }
+      setSaving(false);
     }
     if (isSubmit) {
-      onOpen(false);
+      onClose();
     }
     setSaving(false);
   };
@@ -404,9 +425,10 @@ export const CodingInterface = ({ session, id }) => {
         <span className="text-red-500 font-bold">Assignment is past due.</span>
       );
     } else {
-      const isUrgent = (days = 0 && hours === 0 && minutes < 5)
-        ? "text-red-500 font-bold animate-pulse" // Urgent state styles
-        : ""; // Normal state styles
+      const isUrgent =
+        days === 0 && hours === 0 && minutes < 5
+          ? "text-red-500 font-bold animate-pulse" // Urgent state styles
+          : ""; // Normal state styles
 
       const pad = (num) => num.toString().padStart(2, "0");
       return (
@@ -420,6 +442,7 @@ export const CodingInterface = ({ session, id }) => {
       );
     }
   };
+
   return (
     <form>
       <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
@@ -444,43 +467,51 @@ export const CodingInterface = ({ session, id }) => {
                   variant="underlined"
                   className="font-medium"
                 >
-                  {["description", "submissions", "hints"].map((tab) => (
-                    <Tab
-                      key={tab}
-                      title={tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    />
-                  ))}
+                  <Tab key={"Description"} title={"Description"} />
+                  <Tab
+                    key={"Results & Submissions"}
+                    title={"Results & Submissions"}
+                  />
                 </Tabs>
               </CardHeader>
 
               {/* Problem Content */}
-              {/* FIX #2: Remove h-full. The flex-1 class will now work correctly and is all you need. */}
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                {/* You can remove the min-h-[1000px] once you see it scrolling */}
-                <div className="space-y-8">
-                  {/* Title and Difficulty */}
-                  <div className="space-y-4">
-                    <h1 className="text-3xl font-bold text-white">
-                      {assignmentData?.title || "Assignment Title"}
-                    </h1>
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                        Easy
-                      </span>
-                      <span className="text-gray-400 text-sm">✓ 4.2M</span>
-                      <span className="text-gray-400 text-sm">📝 8.9M</span>
-                      <span className="text-yellow-400 text-sm">⭐ 85.2%</span>
+              {activeTab === "Description" && (
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                  <div className="space-y-8">
+                    {/* Title and Difficulty */}
+                    <div className="space-y-4">
+                      <h1 className="text-3xl font-bold text-white">
+                        {assignmentData?.title || "Assignment Title"}
+                      </h1>
+                      <div className="flex items-center gap-3"></div>
+                    </div>
+
+                    {/* The content that will overflow and cause scrolling */}
+                    <div className="space-y-4">
+                      <div
+                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                      ></div>
                     </div>
                   </div>
-
-                  {/* The content that will overflow and cause scrolling */}
-                  <div className="space-y-4">
-                    <div
-                      dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                    ></div>
+                </div>
+              )}
+              {activeTab === "Results & Submissions" && (
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                  <div className="space-y-8">
+                    <h1 className="text-3xl font-bold text-white">
+                      Results & Submissions
+                    </h1>
+                    <div className="space-y-4">
+                      <p className="text-gray-400">
+                        This section will show your submission history and
+                        results.
+                      </p>
+                      <Skeleton className="h-48 w-full" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </Card>
@@ -514,17 +545,24 @@ export const CodingInterface = ({ session, id }) => {
                 <SelectItem key={"python"}>🐍 Python</SelectItem>
                 <SelectItem key={"java"}>☕ Java</SelectItem>
               </Select>
-              {assignmentData?.due_at && (
-                <div className="text-sm text-gray-400 font-semibold bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
+              <div className="text-sm text-gray-400 font-semibold bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
+                <span>⏰</span>
+                {timeUp ? (
+                  <span className="text-red-500 font-bold">
+                    Assignment is past due
+                  </span>
+                ) : (
                   <Countdown
                     date={assignmentData?.due_at}
                     renderer={countdownRenderer}
                     onComplete={() => {
                       saveAssignmentData(true);
-                    }} // need to check this !!!!!!
+                      setTimeUp(true);
+                    }}
                   />
-                </div>
-              )}
+                )}
+              </div>
+
               <div className="flex items-center gap-2">
                 <Tooltip content="Reset Code" color="danger">
                   <Button
@@ -566,11 +604,11 @@ export const CodingInterface = ({ session, id }) => {
                   language={selectedLanguage || "java"}
                   editorRef={editorRef}
                   role="student"
-                  height="100%"
                   // TODO : make this dynamic
                   disableMenu={true}
                   starterCode={assignmentData?.code_template || ""}
                   initialLockedLines={new Set([])}
+                  isDisabled={timeUp}
                 />
               </div>
             )}
@@ -638,10 +676,10 @@ export const CodingInterface = ({ session, id }) => {
             <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
               ⏱️ {time}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ">
               <Button
                 onPress={runCode}
-                disabled={isRunning}
+                isDisabled={isRunning}
                 startContent={
                   (isRunning && <Spinner color="secondary" size="sm" />) || (
                     <Play size={16} />
@@ -656,6 +694,7 @@ export const CodingInterface = ({ session, id }) => {
                 color="primary"
                 variant="flat"
                 onPress={() => saveAssignmentData(false)}
+                isDisabled={isSubmitting || saving || timeUp}
                 startContent={
                   saving ? (
                     <Spinner size="sm" color="primary" />
@@ -668,7 +707,7 @@ export const CodingInterface = ({ session, id }) => {
               </Button>
               <Button
                 onPress={onOpen}
-                disabled={isSubmitting}
+                isDisabled={isSubmitting || timeUp}
                 startContent={
                   (isSubmitting && <Spinner color="success" size="sm" />) || (
                     <CloudUpload size={16} />
