@@ -46,6 +46,25 @@ module.exports = {
       themes: {
         light: {
           colors: {
+            secondary: {
+          // We'll use Tailwind's "amber" palette for this example
+          DEFAULT: '#f59e0b', // amber-500
+          '50': '#fffbeb',
+          '100': '#fef3c7',
+          '200': '#fde68a',
+          '300': '#fcd34d',
+          '400': '#fbbf24',
+          '500': '#f59e0b',
+          '600': '#d97706',
+          '700': '#b45309',
+          '800': '#92400e',
+          '900': '#78350f',
+          '950': '#451a03',
+        },
+            primary: {
+              DEFAULT: "#BEF264",
+              foreground: "#000000",
+            },
             background: {
               DEFAULT: "#FFFFFF"
             },
@@ -68,6 +87,25 @@ module.exports = {
           }
         },
         dark: {
+          secondary: {
+          // We'll use Tailwind's "amber" palette for this example
+          DEFAULT: '#f59e0b', // amber-500
+          '50': '#fffbeb',
+          '100': '#fef3c7',
+          '200': '#fde68a',
+          '300': '#fcd34d',
+          '400': '#fbbf24',
+          '500': '#f59e0b',
+          '600': '#d97706',
+          '700': '#b45309',
+          '800': '#92400e',
+          '900': '#78350f',
+          '950': '#451a03',
+        },
+          primary: {
+              DEFAULT: "#BEF264",
+              foreground: "#000000",
+            },
           colors: {
             background: {
               DEFAULT: "#121212"
