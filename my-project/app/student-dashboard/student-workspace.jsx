@@ -57,7 +57,7 @@ import CodeEditor from "../components/editor/code-editor";
 import { RichTextEditor } from "../components/assignment/RichText/rich-description";
 import { Icon } from "@iconify/react";
 
-export const CodingInterface = ({ session, id }) => {
+export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   const [activeTab, setActiveTab] = useState("Description");
   const [consoleTab, setConsoleTab] = useState("testcases");
   const [selectedLanguage, setSelectedLanguage] = useState();
@@ -77,6 +77,11 @@ export const CodingInterface = ({ session, id }) => {
 
   const [assignmentData, setAssignmentData] = useState(null);
   const fetchDataForAssignment = useCallback(async () => {
+    if (isPreview) {
+      setAssignmentData(previewData);
+      console.log("Preview mode, skipping data fetch.");
+      return;
+    }
     if (!id) {
       console.log("No assignment ID provided.");
       return;
@@ -96,6 +101,7 @@ export const CodingInterface = ({ session, id }) => {
         const due_time = new Date(assignmentData?.due_at).getTime();
         if (due_time < Date.now()) {
           setTimeUp(true);
+          setActiveTab("results");
         }
         return;
       }
@@ -114,6 +120,7 @@ export const CodingInterface = ({ session, id }) => {
       const due_time = new Date(assignmentData?.due_at).getTime();
       if (due_time < Date.now()) {
         setTimeUp(true);
+        setActiveTab("results");
       }
     } catch (error) {
       console.error("Error fetching assignment data:", error);
@@ -121,6 +128,10 @@ export const CodingInterface = ({ session, id }) => {
   }, []);
 
   const saveAssignmentData = async (isSubmit) => {
+    if (isPreview) {
+      console.warn("Preview mode, skipping save/submit.");
+      return;
+    }
     const submit = isSubmit || false;
     const due_time = new Date(assignmentData?.due_at).getTime();
     if (Date.now() - 60 * 300 > due_time || !assignmentData) {
@@ -449,7 +460,7 @@ export const CodingInterface = ({ session, id }) => {
       <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
         {/* Left Panel - Problem Description */}
         <Card
-          className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/40"
+          className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden bg-zinc-800/40"
           style={{ width: `${leftWidth}%` }}
         >
           {isLoading ? (
@@ -469,10 +480,7 @@ export const CodingInterface = ({ session, id }) => {
                   className="font-medium"
                 >
                   <Tab key={"Description"} title={"Description"} />
-                  <Tab
-                    key={"Results & Submissions"}
-                    title={"Results & Submissions"}
-                  />
+                  <Tab key={"results"} title={"Results & Submissions"} />
                 </Tabs>
               </CardHeader>
 
@@ -497,7 +505,7 @@ export const CodingInterface = ({ session, id }) => {
                   </div>
                 </div>
               )}
-              {activeTab === "Results & Submissions" && (
+              {activeTab === "results" && (
                 <div className="w-full h-full flex justify-center items-center p-8 custom-scrollbar">
                   <div className="space-y-4 text-center">
                     <Icon
@@ -526,7 +534,7 @@ export const CodingInterface = ({ session, id }) => {
 
         {/* Right Panel - Code Editor and Console */}
         <Card
-          className="backdrop-blur-sm rounded-lg border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
+          className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
           style={{ width: `${100 - leftWidth - 1}%` }}
         >
           {/* Code Editor Section */}

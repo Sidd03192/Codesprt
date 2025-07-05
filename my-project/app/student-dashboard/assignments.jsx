@@ -10,12 +10,13 @@ import {
   Chip,
   Progress,
   Spinner,
+  DropdownMenu,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { getAssignmentsData } from "./api";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   Modal,
   ModalContent,
@@ -23,7 +24,12 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
 } from "@heroui/react";
+import { AssignmentCard } from "./components/assignment-card";
 export const StudentAssignments = ({
   session,
   assignments,
@@ -35,10 +41,41 @@ export const StudentAssignments = ({
 }) => {
   const [searchValue, setSearchValue] = React.useState("");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [selected, setSelected] = useState("classroom");
-  const filteredAssignments = assignments?.filter((assignment) => {
+  const [completedAssignments, setCompletedAssignments] = useState([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState([]);
+  const [selected, setSelected] = useState("upcoming");
+  const [showClasroom, setShowClasroom] = useState(false);
+
+  const updateAssignments = (assignments) => {
+    const completed = assignments.filter(
+      (assignment) => !!assignment.submitted_at
+    );
+    const upcoming = assignments.filter(
+      (assignment) => !assignment.submitted_at
+    );
+    const sortedCompleted = [...completed].sort(
+      (a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)
+    );
+    setCompletedAssignments(sortedCompleted);
+
+    const sortedUpcoming = [...upcoming].sort(
+      (a, b) => new Date(a.due_date) - new Date(b.due_date)
+    );
+    setUpcomingAssignments(sortedUpcoming);
+    console.log("copmleted", completed);
+  };
+
+  useEffect(() => {
+    if (assignments) {
+      updateAssignments(assignments);
+    }
+  }, [assignments]);
+
+  const filteredAssignments = (
+    selected === "upcoming" ? upcomingAssignments : completedAssignments
+  ).filter((assignment) => {
     // add filter functionaity TODO
+
     if (
       searchValue &&
       !assignment.title.toLowerCase().includes(searchValue.toLowerCase())
@@ -79,6 +116,25 @@ export const StudentAssignments = ({
     });
   };
 
+  // group assignments by class_name
+  const groupedAssignments = useMemo(() => {
+    const assignments =
+      (selected === "upcoming" ? upcomingAssignments : completedAssignments) ||
+      [];
+    if (!assignments) return {};
+    return assignments.reduce((acc, assignment) => {
+      const groupKey = assignment.class_name || "Uncategorized"; /// TODO make sure this becomes by class_id
+
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
+      }
+
+      acc[groupKey].push(assignment);
+
+      return acc;
+    }, {});
+  }, [selected, upcomingAssignments, completedAssignments]);
+
   const isOverDue = (dueDate) => {
     const date = new Date(dueDate);
     const now = new Date();
@@ -93,10 +149,19 @@ export const StudentAssignments = ({
             <h2 className="text-lg font-medium">My Assignments</h2>
           </div>
           <div className="flex gap-2">
-            <Button color="secondary" variant="flat">
-              <Icon icon="lucide:filter" className="mr-1" />
-              Filter
+            <Button
+              color="secondary"
+              variant="flat"
+              onPress={() => setShowClasroom(!showClasroom)}
+            >
+              {showClasroom ? (
+                <Icon icon="lucide:shapes" />
+              ) : (
+                <Icon icon="lucide:list" />
+              )}
+              {showClasroom ? "Classroom View" : "All Assignments"}
             </Button>
+
             <Button
               color="secondary"
               variant="flat"
@@ -114,6 +179,7 @@ export const StudentAssignments = ({
               startContent={<Icon icon="lucide:search" />}
               value={searchValue}
               onValueChange={setSearchValue}
+              isDisabled={showClasroom === true}
               className="w-full sm:max-w-xs"
             />
             <Tabs
@@ -125,8 +191,8 @@ export const StudentAssignments = ({
                 tabList: "gap-2",
               }}
             >
-              <Tab key="classroom" title="Classroom" />
-              <Tab key="stlandalone" title="Standalone" />
+              <Tab key="upcoming" title="Upcoming" />
+              <Tab key="completed" title="Completed" />
             </Tabs>
           </div>
 
@@ -137,142 +203,54 @@ export const StudentAssignments = ({
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredAssignments && filteredAssignments.length > 0 ? (
-                  filteredAssignments.map((assignment) => (
-                    <Card
-                      key={assignment.id}
-                      className="border border-divider  "
+                {showClasroom &&
+                  Object.keys(groupedAssignments).map((className) => (
+                    <div
+                      key={className}
+                      className="space-y-2  border-divider p-1 rounded-lg  mb-3 "
                     >
-                      <CardBody>
-                        <div className="flex flex-col sm:flex-row justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium">
-                                {assignment.title}
-                              </h3>
-                              <Chip size="sm" variant="flat" color="primary">
-                                {assignment.class_name}
-                              </Chip>
-                            </div>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-foreground-500">
-                              <span>
-                                Due: {getDueDate(assignment.due_date)}
-                              </span>
-                            </div>
+                      <Chip
+                        variant="flat"
+                        color="primary"
+                        className="text-lg  font-bold "
+                      >
+                        {className}
+                      </Chip>
 
-                            <div className="mt-3 flex items-center gap-2">
-                              {assignment.submitted_at ? (
-                                <>
-                                  <Icon
-                                    icon="lucide:check-circle"
-                                    className="text-success"
-                                  />
-                                  <span className="text-sm">Completed</span>
-                                  <span className="ml-2 text-sm">Grade: </span>
-                                  <Chip
-                                    size="sm"
-                                    variant="flat"
-                                    color="secondary"
-                                  >
-                                    {assignment.grade || "awaiting grade"}
-                                  </Chip>
-                                </>
-                              ) : (
-                                <Chip size="sm" variant="flat" color="warning">
-                                  {assignment.status || "Pending"}
-                                </Chip>
-                              )}
-                              {isOverDue(assignment.due_date) &&
-                                !assignment.submitted_at && (
-                                  <Chip size="sm" variant="flat" color="danger">
-                                    Overdue
-                                  </Chip>
-                                )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 self-end sm:self-center">
-                            <Button
-                              color="secondary"
-                              variant="flat"
-                              onPress={() => {
-                                setSelectedAssignment(assignment.assignment_id);
-                                onOpen();
-                              }}
-                              startContent={
-                                isAssignmentDone(
-                                  assignment.id,
-                                  assignment.due_date
-                                ) ? (
-                                  <Icon icon="lucide:eye" />
-                                ) : (
-                                  <Icon icon="lucide:edit-3" />
-                                )
-                              }
-                            >
-                              {isAssignmentDone(
-                                assignment.id,
-                                assignment.due_date
-                              )
-                                ? "View Assignment"
-                                : "Start Assignment"}
-                            </Button>
-                            <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-                              <ModalContent>
-                                {(onClose) => (
-                                  <>
-                                    <ModalHeader className="flex flex-col gap-1">
-                                      Submit Assignment
-                                    </ModalHeader>
-                                    <ModalBody>
-                                      <Card className="border-spacing-3 border-large border-yellow-400 p-5 bg-zinc-850">
-                                        <p className="text-yellow-500 ">
-                                          Are you sure you want to start this
-                                          assignment? Once you start, you cannot
-                                          go back.
-                                        </p>
-                                      </Card>
-                                    </ModalBody>
-                                    <ModalFooter>
-                                      <Button
-                                        color="danger"
-                                        variant="light"
-                                        onPress={onClose}
-                                      >
-                                        Close
-                                      </Button>
-                                      <Link
-                                        key={assignment.assignment_id}
-                                        href={`/student-dashboard/assignments/${selectedAssignment}`}
-                                      >
-                                        <Button
-                                          color="secondary"
-                                          variant="flat"
-                                          className="min-w-[120px]"
-                                          onPress={() =>
-                                            console.log(
-                                              "Starting assignment",
-                                              assignment.assignment_id
-                                            )
-                                          }
-                                        >
-                                          <Icon
-                                            icon="lucide:edit-3"
-                                            className="mr-1"
-                                          />
-                                          Start Assignment
-                                        </Button>
-                                      </Link>
-                                    </ModalFooter>
-                                  </>
-                                )}
-                              </ModalContent>
-                            </Modal>
-                          </div>
+                      {groupedAssignments[className].map((assignment) => (
+                        <div className="mb-3" key={assignment.id}>
+                          <AssignmentCard
+                            assignment={assignment}
+                            key={assignment.id}
+                            getDueDate={getDueDate}
+                            OnOpenChange={onOpenChange}
+                            isOpen={isOpen}
+                            onOpen={onOpen}
+                            setIsLoading={setIsLoading}
+                            isAssignmentDone={isAssignmentDone}
+                            isOverDue={isOverDue}
+                          />
                         </div>
-                      </CardBody>
-                    </Card>
-                  ))
-                ) : (
+                      ))}
+                    </div>
+                  ))}
+
+                {!showClasroom &&
+                  filteredAssignments &&
+                  filteredAssignments.length > 0 &&
+                  filteredAssignments.map((assignment) => (
+                    <AssignmentCard
+                      assignment={assignment}
+                      key={assignment.id}
+                      getDueDate={getDueDate}
+                      OnOpenChange={onOpenChange}
+                      isOpen={isOpen}
+                      onOpen={onOpen}
+                      isOverDue={isOverDue}
+                    />
+                  ))}
+
+                {!assignments && (
                   <div className="text-center py-8">
                     <Icon
                       icon="lucide:file-check"
