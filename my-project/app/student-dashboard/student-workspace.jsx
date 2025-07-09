@@ -161,7 +161,8 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
       student_id,
       id,
       submit,
-      new Date().toISOString() // Use current date and time for submission
+      new Date().toISOString(), // Use current date and time for submission
+      assignmentData.language
     );
     if (data) {
       if (submit) {

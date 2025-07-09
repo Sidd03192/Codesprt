@@ -33,6 +33,7 @@ export const Assignments = ({ session, classes }) => {
     const { data, error } = await supabase
       .from("assignments")
       .select("*")
+      .eq("teacher_id", session.user.id)
       .order("created_at", { ascending: false });
 
     if (!error) setAssignments(data);

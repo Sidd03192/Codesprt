@@ -276,8 +276,8 @@ export const Toolbar = ({ editor }) => {
           isIconOnly
           size="sm"
           onPress={enhanceWithAI}
-          variant={editor.isActive("codeBlock") ? "solid" : "light"}
-          color={editor.isActive("codeBlock") ? "primary" : "default"}
+          variant={"light"}
+          color={"default"}
           aria-label="Code Block"
           className="shadow-lg"
         >
