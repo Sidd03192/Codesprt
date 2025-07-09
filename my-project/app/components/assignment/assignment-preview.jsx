@@ -12,19 +12,15 @@ import {
   Tooltip,
   Spinner,
 } from "@heroui/react";
-import {
-  RotateCcw,
-  Settings,
-  Save,
-  Play,
-  CloudUpload,
-} from "lucide-react";
+import { RotateCcw, Settings, Save, Play, CloudUpload } from "lucide-react";
 
 export const AssignmentPreview = ({ assignment, onClose }) => {
   const isDark = true;
   const title = assignment?.title || "Assignment Preview";
-  const description = assignment?.description || "<p>No description provided.</p>";
-  const codeTemplate = assignment?.code_template || "// No code template provided.";
+  const description =
+    assignment?.description || "<p>No description provided.</p>";
+  const codeTemplate =
+    assignment?.code_template || "// No code template provided.";
   const language = assignment?.language || "java";
 
   return (
@@ -69,7 +65,8 @@ export const AssignmentPreview = ({ assignment, onClose }) => {
               </Select>
 
               <div className="text-sm text-gray-400 font-semibold bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
-                ⏰ Due in: <span className="text-green-400 font-bold">3d 12h 20m</span>
+                ⏰ Due in:{" "}
+                <span className="text-green-400 font-bold">3d 12h 20m</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -100,6 +97,7 @@ export const AssignmentPreview = ({ assignment, onClose }) => {
                 language={language}
                 value={codeTemplate}
                 theme="vs-dark"
+                role="teacher"
                 options={{
                   readOnly: true,
                   minimap: { enabled: false },
@@ -119,7 +117,14 @@ export const AssignmentPreview = ({ assignment, onClose }) => {
                   color="secondary"
                   variant="underlined"
                 >
-                  <Tab key="console" title={<span className="flex items-center gap-2">💻 Console</span>} />
+                  <Tab
+                    key="console"
+                    title={
+                      <span className="flex items-center gap-2">
+                        💻 Console
+                      </span>
+                    }
+                  />
                 </Tabs>
               </div>
 
@@ -134,13 +139,31 @@ export const AssignmentPreview = ({ assignment, onClose }) => {
                   ⏱️ 0.00s
                 </div>
                 <div className="flex items-center gap-4">
-                  <Button isDisabled className="opacity-100" startContent={<Play size={16} />} color="secondary" variant="flat">
+                  <Button
+                    isDisabled
+                    className="opacity-100"
+                    startContent={<Play size={16} />}
+                    color="secondary"
+                    variant="flat"
+                  >
                     Run
                   </Button>
-                  <Button isDisabled className="opacity-50" startContent={<Save size={16} />} color="primary" variant="flat">
+                  <Button
+                    isDisabled
+                    className="opacity-50"
+                    startContent={<Save size={16} />}
+                    color="primary"
+                    variant="flat"
+                  >
                     Save
                   </Button>
-                  <Button isDisabled className="opacity-50" startContent={<CloudUpload size={16} />} color="success" variant="flat">
+                  <Button
+                    isDisabled
+                    className="opacity-50"
+                    startContent={<CloudUpload size={16} />}
+                    color="success"
+                    variant="flat"
+                  >
                     Submit
                   </Button>
                 </div>

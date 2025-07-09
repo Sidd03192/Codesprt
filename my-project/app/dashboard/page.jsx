@@ -98,7 +98,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session]);
+  }, [session?.user?.id]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
