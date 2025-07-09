@@ -9,10 +9,12 @@ import {
   Tabs,
   Tab,
   Chip,
+  Modal,
+  ModalContent,
+  ModalHeader,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Code, CircleX } from "lucide-react";
-import { Modal, ModalContent, ModalHeader } from "@heroui/modal";
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,7 +28,23 @@ export const Assignments = ({ session, classes }) => {
   const [selected, setSelected] = useState("all");
   const [searchValue, setSearchValue] = useState("");
   const [open, setOpen] = useState(false);
+  const [submissionsOpen, setSubmissionsOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState(null);
+  const dummyStudents = [
+    { id: 1, name: "Alice Johnson", image: null },
+    { id: 2, name: "Bob Smith", image: "https://i.pravatar.cc/150?img=5" },
+    { id: 3, name: "Charlie Nguyen", image: null },
+    { id: 4, name: "Dana Lee", image: "https://i.pravatar.cc/150?img=10" },
+    { id: 5, name: "Ethan Kim", image: "https://i.pravatar.cc/150?img=15" },
+    { id: 6, name: "Fiona Chen", image: "https://i.pravatar.cc/150?img=20" },
+    { id: 7, name: "George Li", image: "https://i.pravatar.cc/150?img=25" },
+    { id: 8, name: "Hannah Patel", image: "https://i.pravatar.cc/150?img=30" },
+    { id: 9, name: "Isaac Wang", image: "https://i.pravatar.cc/150?img=35" },
+    { id: 10, name: "Jasmine Wu", image: "https://i.pravatar.cc/150?img=40" },
+  ];
 
   const fetchAssignments = async () => {
     setLoading(true);
@@ -195,25 +213,31 @@ export const Assignments = ({ session, classes }) => {
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 text-sm text-foreground-500">
                             <span>Class ID: {assignment.class_id}</span>
-                            <span>
-                              Opens: {formatDateTime(assignment.open_at)}
-                            </span>
-                            <span>
-                              Due: {formatDateTime(assignment.due_at)}
-                            </span>
+                            <span>Opens: {formatDateTime(assignment.open_at)}</span>
+                            <span>Due: {formatDateTime(assignment.due_at)}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 self-end sm:self-center">
-                          <Button size="sm" variant="flat">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            onPress={() => {
+                              setSelectedAssignment(assignment);
+                              setSubmissionsOpen(true);
+                            }}
+                          >
                             <Icon icon="lucide:eye" className="mr-1" />
-                            View
+                            View Submissions
                           </Button>
                           <Button size="sm" variant="flat">
                             <Icon icon="lucide:edit" className="mr-1" />
                             Edit
                           </Button>
-                          <Button size="sm" variant="flat" color="danger">
-                            <Icon icon="lucide:trash-2" />
+                          <Button size="sm" variant="flat" color="danger" onPress={() => {
+                              setAssignmentToDelete(assignment);
+                              setDeleteModalOpen(true);
+                          }}>
+                              <Icon icon="lucide:trash-2" />
                           </Button>
                         </div>
                       </div>
@@ -236,6 +260,99 @@ export const Assignments = ({ session, classes }) => {
           </div>
         </CardBody>
       </Card>
+
+      {/* Submissions Modal */}
+      <Modal
+  isOpen={submissionsOpen}
+  onClose={() => setSubmissionsOpen(false)}
+  className="max-w-[600px]"
+>
+  <ModalContent>
+    <ModalHeader className="border-b border-zinc-800">
+      <h2 className="text-lg font-semibold">
+        Submissions for: {selectedAssignment?.title}
+      </h2>
+    </ModalHeader>
+
+    <div className="max-h-[400px] overflow-y-auto px-6 py-4 space-y-4">
+      {dummyStudents.length === 0 ? (
+        <div className="text-center text-foreground-500">
+          This assignment has no students.
+        </div>
+      ) : (
+        dummyStudents.map((student) => (
+          <div
+            key={student.id}
+            className="flex items-center justify-between bg-zinc-900 border border-zinc-700 rounded-xl p-4"
+          >
+            <div className="flex items-center gap-3">
+              {student.image ? (
+                <img
+                  src={student.image}
+                  alt={student.name}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-zinc-300 flex items-center justify-center text-zinc-700">
+                  <Icon icon="lucide:user" />
+                </div>
+              )}
+              <span className="font-medium">{student.name}</span>
+            </div>
+            <Button size="sm" variant="flat" color="primary">
+              View Submission
+            </Button>
+          </div>
+        ))
+      )}
+    </div>
+  </ModalContent>
+</Modal>
+<Modal
+  isOpen={deleteModalOpen}
+  onClose={() => setDeleteModalOpen(false)}
+  className="max-w-md"
+>
+  <ModalContent>
+    <ModalHeader className="border-b border-zinc-800">
+      <h2 className="text-lg font-semibold">Are you sure you want to delete this assignment?</h2>
+    </ModalHeader>
+    <div className="px-6 py-4 space-y-4">
+      <p className="text-sm text-foreground-500">
+        Assignment: <strong>{assignmentToDelete?.title}</strong>
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="light"
+          onPress={() => setDeleteModalOpen(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          color="primary"
+          onPress={async () => {
+            if (assignmentToDelete) {
+              const { error } = await supabase
+                .from("assignments")
+                .delete()
+                .eq("id", assignmentToDelete.id);
+
+              if (!error) {
+                setAssignments((prev) =>
+                  prev.filter((a) => a.id !== assignmentToDelete.id)
+                );
+              }
+              setDeleteModalOpen(false);
+              setAssignmentToDelete(null);
+            }
+          }}
+        >
+          OK
+        </Button>
+      </div>
+    </div>
+  </ModalContent>
+</Modal>
     </div>
   );
 };

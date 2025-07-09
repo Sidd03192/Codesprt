@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input, Tabs, Tab, Chip, Avatar, Progress, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, InputOtp } from "@heroui/react";
+import { addToast,Card, CardBody, CardHeader, Button, Input, Tabs, Tab, Chip, Avatar, Progress, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, InputOtp } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { getUserCourses, joinClassroom } from "./api";
 
@@ -21,10 +21,25 @@ export const StudentCourses = ({user_id}) => {
   }, []);
 
   const handleJoinClassroom = async () => {
-      await joinClassroom(joinCode, user_id);
-      await loadCourses(); // reload from DB
-      onClose();
-      setJoinCode("");
+    const result = await joinClassroom(joinCode, user_id);
+    if (!result) {
+      addToast({
+        title: "Join Failed",
+        description: "Invalid code or you already joined this classroom.",
+        status: "danger",
+      });
+      return; // Stop here, don’t try to reload courses
+    }
+  
+    addToast({
+      title: "Joined Successfully",
+      description: `You have joined ${result.name || "a new course"}!`,
+      status: "success",
+    });
+  
+    await loadCourses(); // reload from DB
+    onClose();
+    setJoinCode("");
   };
   console.log("user id id:", user_id);
   const filteredCourses = courses.filter(course => {
