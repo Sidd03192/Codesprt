@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Upload,
   File,
@@ -13,13 +13,14 @@ import {
 // JSZip is imported directly from a CDN that serves ES modules.
 // This avoids the need for a local installation or a separate script tag.
 import JSZip from "jszip";
-import { ScrollShadow, Spinner } from "@heroui/react";
+import { addToast, ScrollShadow, Spinner } from "@heroui/react";
 
 export const Testcase = () => {
   // A single state to hold all file information, including zip contents
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [valid, setValid] = useState(true);
 
   const handleFiles = useCallback(async (files) => {
     setProcessing(true);
@@ -53,8 +54,8 @@ export const Testcase = () => {
                   name: fileInZip.name,
                   size: fileInZip._data.uncompressedSize,
                   isTestJava:
-                    fileInZip.name.endsWith("test.java") ||
-                    fileInZip.name.includes("/test.java"),
+                    fileInZip.name.toLowerCase().endsWith("test.java") ||
+                    fileInZip.name.toLowerCase().includes("/test.java"),
                 });
               }
             }
@@ -69,27 +70,42 @@ export const Testcase = () => {
       })
     );
 
-    setUploadedFiles((prev) => [...prev, ...processedFiles]);
+    setUploadedFiles(processedFiles);
     setProcessing(false);
   }, []);
 
+  // Keep this useMemo as it is in the artifact. Its job is to calculate the
+  // validation state for the UI to display, which is a perfect use for useMemo.
   const validationResult = useMemo(() => {
     if (uploadedFiles.length === 0) {
-      return null; // No files, no validation message
+      return null;
     }
-
     const hasTestJava = uploadedFiles.some((file) => {
-      // Check if the file itself is Test.java
-      if (file.name === "test.java") return true;
-      // Check if the file is a zip and contains Test.java
+      if (file.name.toLowerCase() === "test.java") return true;
       if (file.isZip && file.contents?.some((c) => c.isTestJava)) return true;
       return false;
     });
-
     const isZipPresent = uploadedFiles.some((file) => file.isZip);
-
     return { hasTestJava, isZipPresent };
   }, [uploadedFiles]);
+
+  useEffect(() => {
+    if (validationResult) {
+      if (!validationResult.hasTestJava) {
+        addToast({
+          title: "Error",
+          description: "No Test.java file found in uploaded files.",
+          duration: 5000,
+          variant: "solid",
+          color: "warning",
+        });
+        setValid(false);
+        setUploadedFiles([]);
+      } else {
+        setValid(true);
+      }
+    }
+  }, [validationResult]); // Dependency array watches the result of the calculation
 
   const handleDrop = useCallback(
     (e) => {
@@ -196,10 +212,7 @@ export const Testcase = () => {
                 {uploadedFiles.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <ScrollShadow
-              hideScrollBar={true}
-              className="space-y-3 overflow-y-auto max-h-[300px]"
-            >
+            <div>
               {uploadedFiles.map((file) => (
                 <React.Fragment key={file.id}>
                   <div
@@ -221,13 +234,15 @@ export const Testcase = () => {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium  truncate">
+                      <h3
+                        className={`text-base font-medium  truncate ${
+                          valid ? "text-success" : ""
+                        }`}
+                      >
                         {file.name}
                       </h3>
                       <div className="flex items-center mt-1 text-xs ">
                         <span>{formatFileSize(file.size)}</span>
-                        <span className="mx-2">·</span>
-                        <span>{file.type || "unknown type"}</span>
                       </div>
                     </div>
 
@@ -245,13 +260,13 @@ export const Testcase = () => {
 
                   {/* Expanded Zip Contents */}
                   {file.isExpanded && (
-                    <div className="pl-8 pr-4 pb-2">
+                    <ScrollShadow className="pl-8 pr-4 pb-2 max-h-[300px]">
                       <div className="border-l-2 border-purple-200 pl-6 space-y-2 py-2">
                         {file.contents.length > 0 ? (
                           file.contents.map((content, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between p-2 bg-purple-50/50 rounded-md"
+                              className="flex items-center justify-between p-2  rounded-md"
                             >
                               <div className="flex items-center">
                                 <File
@@ -265,7 +280,7 @@ export const Testcase = () => {
                                   className={`text-sm ${
                                     content.isTestJava
                                       ? "font-semibold text-green-700"
-                                      : "text-gray-600"
+                                      : "text-gray-200"
                                   }`}
                                 >
                                   {content.name}
@@ -276,9 +291,6 @@ export const Testcase = () => {
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-gray-500">
-                                {formatFileSize(content.size)}
-                              </span>
                             </div>
                           ))
                         ) : (
@@ -287,11 +299,11 @@ export const Testcase = () => {
                           </p>
                         )}
                       </div>
-                    </div>
+                    </ScrollShadow>
                   )}
                 </React.Fragment>
               ))}
-            </ScrollShadow>
+            </div>
           </div>
         )}
 
