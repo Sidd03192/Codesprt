@@ -55,7 +55,6 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
       "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
     dueDate: null,
     startDate: null,
-    testcases: [],
     lockedLines: [],
     hiddenLines: [],
     allowLateSubmission: false,
@@ -76,10 +75,10 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
   const [students, setStudents] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [dueDate, setDueDate] = useState(null);
-  const [assignmentTitle, setAssignmentTitle] = useState("");
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [assignmentPreviewData, setAssignmentPreviewData] =
     React.useState(null);
+  const [testcases, setTestcases] = useState([]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -97,8 +96,6 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
 
     fetchStudents();
   }, [formData.classId]);
-
-  const selectedClass = classes?.find((c) => c.id === formData.classId) || null;
 
   const handleClassChange = useCallback((classId, className) => {
     // updates class Id
@@ -188,7 +185,8 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
     e.preventDefault();
     // setIsSubmitting(true); // Start loading
     console.log("Form submitted:", formData);
-
+    const testing_url = await uploadTestcases();
+    console.log(testing_url);
     const code = editorRef.current.getValue();
     const description = descriptionRef.current.getJSON();
     const assignmentData = {
@@ -203,7 +201,6 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
       due_at: dueDate.toString(),
       created_at: new Date().toISOString(),
       status: "inactive",
-      test_cases: formData.testcases,
       locked_lines: formData.lockedLines,
       hidden_lines: formData.hiddenLines,
       allow_late_submission: formData.allowLateSubmission,
@@ -212,6 +209,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
       auto_grade: formData.autoGrade,
       show_results: formData.showResults,
       check_style: formData.checkStyle,
+      testing_url: testing_url,
     };
 
     console.log("Submitting assignmentData to the database:", assignmentData);
@@ -322,6 +320,32 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
     }
   };
 
+  const uploadTestcases = async () => {
+    try {
+      const fileWrapper = testcases[0];
+
+      // 3. Get the ACTUAL file from the wrapper object
+      const actualFileToUpload = fileWrapper.file;
+      console.log("file to upload", fileWrapper.file);
+      const fileExtension = formData.title;
+      const fileName = `${Date.now()}.${fileExtension}`;
+      const filePath = `test-cases/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from("testing")
+        .upload(filePath, actualFileToUpload);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+      return filePath;
+    } catch (error) {
+      console.error("Error during upload:", error.message);
+      alert(`Upload failed: ${error.message}`);
+    } finally {
+    }
+  };
+
   const handlePreview = () => {
     const code = editorRef.current?.getValue?.(); // Get code from editor
     const previewData = {
@@ -369,7 +393,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
     <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
       <main className="mx-auto w-full p-4 pb-5 custom-scrollbar">
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Assignment Details Card */}
+          {/* Assignment  Card */}
           <Card className="bg-zinc-800/40 p-6 w-full">
             <h2 className="mb-6 text-xl font-semibold">Assignment Details</h2>
             <div className="grid  gap-6 lg:grid-cols-2">
@@ -643,7 +667,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
                   }
                 >
                   {" "}
-                  <Testcase formData={formData} setFormData={setFormData} />
+                  <Testcase testcases={testcases} setTestcases={setTestcases} />
                 </Tab>
 
                 <Tab

@@ -15,9 +15,8 @@ import {
 import JSZip from "jszip";
 import { addToast, ScrollShadow, Spinner } from "@heroui/react";
 
-export const Testcase = () => {
+export const Testcase = ({ testcases, setTestcases }) => {
   // A single state to hold all file information, including zip contents
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [valid, setValid] = useState(true);
@@ -62,7 +61,6 @@ export const Testcase = () => {
             baseFileObject.contents = contents;
           } catch (error) {
             console.error("Error reading zip file:", error);
-            // Optionally add an error state to the file object
             baseFileObject.error = "Failed to read zip contents.";
           }
         }
@@ -70,24 +68,24 @@ export const Testcase = () => {
       })
     );
 
-    setUploadedFiles(processedFiles);
+    setTestcases(processedFiles);
     setProcessing(false);
   }, []);
 
   // Keep this useMemo as it is in the artifact. Its job is to calculate the
   // validation state for the UI to display, which is a perfect use for useMemo.
   const validationResult = useMemo(() => {
-    if (uploadedFiles.length === 0) {
+    if (testcases.length === 0) {
       return null;
     }
-    const hasTestJava = uploadedFiles.some((file) => {
+    const hasTestJava = testcases.some((file) => {
       if (file.name.toLowerCase() === "test.java") return true;
       if (file.isZip && file.contents?.some((c) => c.isTestJava)) return true;
       return false;
     });
-    const isZipPresent = uploadedFiles.some((file) => file.isZip);
+    const isZipPresent = testcases.some((file) => file.isZip);
     return { hasTestJava, isZipPresent };
-  }, [uploadedFiles]);
+  }, [testcases]);
 
   useEffect(() => {
     if (validationResult) {
@@ -100,7 +98,7 @@ export const Testcase = () => {
           color: "warning",
         });
         setValid(false);
-        setUploadedFiles([]);
+        setTestcases([]);
       } else {
         setValid(true);
       }
@@ -138,11 +136,11 @@ export const Testcase = () => {
   );
 
   const removeFile = (idToRemove) => {
-    setUploadedFiles((prev) => prev.filter((file) => file.id !== idToRemove));
+    setTestcases((prev) => prev.filter((file) => file.id !== idToRemove));
   };
 
   const toggleZipContents = (idToToggle) => {
-    setUploadedFiles((prev) =>
+    setTestcases((prev) =>
       prev.map((file) =>
         file.id === idToToggle
           ? { ...file, isExpanded: !file.isExpanded }
@@ -203,17 +201,17 @@ export const Testcase = () => {
         </label>
 
         {/* Uploaded Files List */}
-        {uploadedFiles.length > 0 && (
+        {testcases.length > 0 && (
           <div className=" rounded-2xl shadow-2xl  mt-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-medium font-medium">Uploaded Files </h3>
               <p className=" rounded-full text-sm font-medium">
-                {uploadedFiles.length} file
-                {uploadedFiles.length !== 1 ? "s" : ""}
+                {testcases.length} file
+                {testcases.length !== 1 ? "s" : ""}
               </p>
             </div>
             <div>
-              {uploadedFiles.map((file) => (
+              {testcases.map((file) => (
                 <React.Fragment key={file.id}>
                   <div
                     className={`flex items-center p-3 rounded-lg transition-colors border border-border ${
@@ -308,7 +306,7 @@ export const Testcase = () => {
         )}
 
         {/* Empty State */}
-        {uploadedFiles.length === 0 && !processing && (
+        {testcases.length === 0 && !processing && (
           <div className="text-center py-16">
             <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg font-medium">
@@ -321,7 +319,7 @@ export const Testcase = () => {
         )}
 
         {/* Processing State */}
-        {processing && uploadedFiles.length == 0 && (
+        {processing && testcases.length == 0 && (
           <div className="text-center py-16">
             <Spinner color="primary" />
             <p className="text-gray-500 text-lg font-medium">Processing...</p>
