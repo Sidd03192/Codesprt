@@ -10,6 +10,7 @@ import {
   Button,
   useDisclosure,
   Avatar,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Sidebar } from "../components/sidebar";
@@ -177,7 +178,9 @@ export default function Dashboard() {
   };
 
   return isLoading ? (
-    <div>Loading...</div>
+    <div>
+      <Spinner color="success" />
+    </div>
   ) : (
     <div className="flex h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]">
       {/* Desktop Sidebar */}
