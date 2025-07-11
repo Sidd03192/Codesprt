@@ -308,25 +308,6 @@ export const Assignments = ({ session, classes }) => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
-                          <Button size="sm" variant="flat">
-                            <Icon icon="lucide:eye" className="mr-1" />
-                            View Submissions
-                          </Button>
-                          <Button size="sm" variant="flat">
-                            <Icon icon="lucide:edit" className="mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            color="danger"
-                            onPress={() => {
-                              setAssignmentToDelete(assignment);
-                              setDeleteModalOpen(true);
-                            }}
-                          >
-                            <Icon icon="lucide:trash-2" />
-                          </Button>
                           {status.toLowerCase() !== "draft" && (
                             <Button
                               size="sm"
@@ -344,6 +325,21 @@ export const Assignments = ({ session, classes }) => {
                               View Submissions
                             </Button>
                           )}
+                          <Button size="sm" variant="flat">
+                            <Icon icon="lucide:edit" className="mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            onPress={() => {
+                              setAssignmentToDelete(assignment);
+                              setDeleteModalOpen(true);
+                            }}
+                          >
+                            <Icon icon="lucide:trash-2" />
+                          </Button>
                         </div>
                       </div>
                     </CardBody>
