@@ -56,7 +56,7 @@ export const getAssignmentDetails = async (assignment_id) => {
   const { data, error } = await supabase
     .from("assignments")
     .select(
-      "id, title, description, language, code_template, hints, open_at, due_at, status,  locked_lines, hidden_lines, allow_late_submission, allow_copy_paste, allow_auto_complete, auto_grade, show_results"
+      "id, title, description, language, code_template, hints, open_at, due_at, status, locked_lines, hidden_lines, allow_late_submission, allow_copy_paste, allow_auto_complete, auto_grade, show_results, testing_url "
     )
     .eq("id", assignment_id)
     .single(); // Use .single() to get a single object instead of an array
