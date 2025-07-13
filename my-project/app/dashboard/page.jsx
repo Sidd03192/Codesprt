@@ -10,6 +10,7 @@ import {
   Button,
   useDisclosure,
   Avatar,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Sidebar } from "../components/sidebar";
@@ -98,7 +99,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session]);
+  }, [session?.user?.id]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -177,15 +178,17 @@ export default function Dashboard() {
   };
 
   return isLoading ? (
-    <div>Loading...</div>
+    <div className="flex h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]">
+      <Spinner color="success" />
+    </div>
   ) : (
-    <div className="flex h-screen w-full bg-background">
+    <div className="flex h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]">
       {/* Desktop Sidebar */}
       {!isMobile && (
         <div
-          className={`h-full transition-all duration-300 ${
+          className={`h-full transition-all duration-300  ${
             isSidebarCollapsed ? "w-16" : "w-64"
-          } border-r border-divider bg-content1`}
+          } border-r border-divider bg-zinc-900/50`}
         >
           <Sidebar
             isCollapsed={isSidebarCollapsed}
@@ -238,7 +241,7 @@ export default function Dashboard() {
 
       <div className="flex flex-1 flex-col overflow-hidden w-full">
         {/* Header */}
-        <header className="flex h-12 items-center  border-b  bg-content1 justify-between  border-divider px-1">
+        <header className="flex h-12 items-center  border-b  bg-zinc-900/50 justify-between  border-divider px-1">
           <div className="flex ">
             <Button
               isIconOnly

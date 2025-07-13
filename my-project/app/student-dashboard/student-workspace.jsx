@@ -1,5 +1,12 @@
 "use client";
-import React, { useState, useRef, useCallback, act } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  act,
+  useMemo,
+  useEffect,
+} from "react";
 import { generateHTML } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -59,6 +66,7 @@ import { Icon } from "@iconify/react";
 
 export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   const [activeTab, setActiveTab] = useState("Description");
+  const [dueDate, setDueDate] = useState(null);
   const [consoleTab, setConsoleTab] = useState("testcases");
   const [selectedLanguage, setSelectedLanguage] = useState();
   const [isRunning, setIsRunning] = useState(false);
@@ -74,8 +82,16 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   const [formData, setFormData] = useState({
     submitted_code: "",
   });
-
   const [assignmentData, setAssignmentData] = useState(null);
+
+  useEffect(() => {
+    // update due date.
+    if (assignmentData?.due_at) {
+      setDueDate(new Date(assignmentData?.due_at));
+      console.log("Due date:", assignmentData?.due_at);
+    }
+  }, [assignmentData?.due_at]);
+
   const fetchDataForAssignment = useCallback(async () => {
     if (isPreview) {
       setAssignmentData(previewData);
@@ -100,6 +116,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
         setAssignmentData(JSON.parse(savedData));
         const due_time = new Date(assignmentData?.due_at).getTime();
         if (due_time < Date.now()) {
+          console.log("Assignment is past due, setting time up." + due_time);
           setTimeUp(true);
           setActiveTab("results");
         }
@@ -162,7 +179,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
       id,
       submit,
       new Date().toISOString(), // Use current date and time for submission
-      assignmentData.language
+      assignmentData.testing_url
     );
     if (data) {
       if (submit) {
@@ -554,20 +571,22 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
               </Select>
               <div className="text-sm text-gray-400 font-semibold bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
                 <span>⏰</span>
-                {timeUp ? (
-                  <span className="text-red-500 font-bold">
-                    Assignment is past due
-                  </span>
-                ) : (
-                  <Countdown
-                    date={assignmentData?.due_at}
-                    renderer={countdownRenderer}
-                    onComplete={() => {
-                      saveAssignmentData(true);
-                      setTimeUp(true);
-                    }}
-                  />
-                )}
+
+                {dueDate &&
+                  (timeUp ? (
+                    <span className="text-red-500 font-bold">
+                      Assignment is past due
+                    </span>
+                  ) : (
+                    <Countdown
+                      date={dueDate}
+                      renderer={countdownRenderer}
+                      onComplete={() => {
+                        saveAssignmentData(true);
+                        setTimeUp(true);
+                      }}
+                    />
+                  ))}
               </div>
 
               <div className="flex items-center gap-2">
