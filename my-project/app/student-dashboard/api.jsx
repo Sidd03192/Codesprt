@@ -150,176 +150,89 @@ export const getUserCourses = async (userId) => {
   return courses;
 };
 
-// check for safety purposes
-export const gradeAssignment = async ({
-  userCode,
-  language,
-  testcases = [],
-}) => {
-  // --- Internal helper to wrap the user's code with test cases ---
-  const wrapCodeWithTests = (code, tests) => {
-    const testCode = tests
-      .map(({ methodName, input, expectedOutput, name }) => {
-        const expectedOutputString = JSON.stringify(expectedOutput);
-        return `
-            try {
-              const result = ${methodName}(${input});
-              if (String(result) !== String(${expectedOutputString})) {
-                console.log("❌ ${name} failed. Expected: ${expectedOutput}, Got: " + result);
-              } else {
-                console.log("✅ ${name} passed.");
-              }
-            } catch (e) {
-              console.log("❌ ${name} errored: " + e.message);
-            }`.trim();
-      })
-      .join("\n\n");
-    return `${code}\n\n${testCode}`;
-  };
-
-  const codeToExecute = wrapCodeWithTests(userCode, testcases);
-
-  const executionResult = await executeCode(language, codeToExecute);
-
-  // parsing logic stuff
-  const stdout = executionResult?.run?.stdout || "";
-  const stderr = executionResult?.run?.stderr || "";
-  const exitCode = executionResult?.run?.exitCode || 0;
-
-  let testsPassed = 0;
-  const testResults = [];
-
-  if (testcases.length > 0) {
-    const outputLines = stdout.split("\n");
-    testcases.forEach((tc) => {
-      const resultLine = outputLines.find((line) => line.includes(tc.name));
-      let status = "unknown";
-      let actualOutput = "";
-      let errorMessage = "";
-
-      if (resultLine) {
-        if (resultLine.startsWith("✅")) {
-          status = "passed";
-          testsPassed++;
-        } else if (resultLine.startsWith("❌")) {
-          const matchErrored = resultLine.match(/errored: (.*)/);
-          if (matchErrored) {
-            status = "errored";
-            errorMessage = matchErrored[1].trim();
-          } else {
-            status = "failed";
-            const matchGot = resultLine.match(/Got: (.*)/);
-            if (matchGot) actualOutput = matchGot[1].trim();
-          }
-        }
-      } else {
-        status = "missing_output";
-      }
-
-      testResults.push({
-        name: tc.name,
-        status: status,
-        expectedOutput: tc.expectedOutput,
-        actualOutput: actualOutput,
-        errorMessage: errorMessage,
-      });
-    });
-  }
-
-  const overallScore =
-    testcases.length > 0 ? (testsPassed / testcases.length) * 100 : 0;
-
-  const structuredOutput = {
-    overallScore: parseFloat(overallScore.toFixed(2)),
-    testsPassed: testsPassed,
-    totalTests: testcases.length,
-    rawStdout: stdout,
-    rawStderr: stderr,
-    exitCode: exitCode,
-    testResults: testResults,
-    gradedAt: new Date().toISOString(),
-  };
-
-  console.log(
-    "Structured Grading Output:\n",
-    JSON.stringify(structuredOutput, null, 2)
-  );
-  return structuredOutput;
-};
-
 export const saveAssignment = async (
   student_code,
   student_id,
   assignment_id,
   isSubmitting,
-  submitted_at
+  submitted_at,
+  path
 ) => {
   const supabase = await createClient();
+
+  console.log(
+    "Saving assignment data for student:",
+    student_id,
+    "assignment:",
+    assignment_id,
+    "code:",
+    student_code,
+    "path:",
+    path
+  );
   const numericAssignmentId = parseInt(assignment_id, 10);
 
   if (!student_code || !student_id || !numericAssignmentId) {
     console.error("Missing required parameters for saving assignment data.");
-    return null;
+    return;
   }
+  let date = null;
 
-  let updatePayload = {
-    student_code: student_code,
-    status: "draft",
-  };
-
+  let satus = isSubmitting ? "submitted" : "draft";
+  let gradingResult = null; // should have score and feedback
   if (isSubmitting) {
-    console.log("--- Starting Submission & Grading Process ---");
+    console.log("Submitting... preparing to call grading API.");
+    let gradingResult = null;
+
     try {
-      // get testcases
-      console.log("Step 1: Fetching assignment details...");
-      const { data: assignmentDetails, error: fetchError } = await supabase
-        .from("assignments")
-        .select("test_cases, language")
-        .eq("id", numericAssignmentId)
-        .single(); // Use .single() to get one object or an error
+      // --- Step 1: Call your /api/grade endpoint ---
+      const response = await fetch(
+        // When calling from the server, you need the full URL
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/grade`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            studentCode: student_code,
+            testing_path: path,
+          }),
+        }
+      );
 
-      if (fetchError) throw fetchError;
-      if (!assignmentDetails) throw new Error("Assignment not found.");
-
-      const { test_cases: testcases, language } = assignmentDetails;
-
-      console.log("Grading student code...");
-      const gradingResult = await gradeAssignment({
-        userCode: student_code,
-        testcases: testcases || [],
-        language: language,
-      });
-
-      if (!gradingResult) {
-        throw new Error("Grading process failed to return a result.");
+      if (!response.ok) {
+        // If the API returns an error status (like 500), handle it
+        const errorBody = await response.json();
+        throw new Error(
+          errorBody.error || `API call failed with status: ${response.status}`
+        );
       }
+      // implement a queue system to handle large ammount of grading requests because parallel requests might be slow?
 
-      updatePayload = {
-        ...updatePayload,
-        submitted_at: submitted_at,
-        status: "submitted",
-        grade: gradingResult.overallScore,
-        autograder_output: JSON.stringify(gradingResult.testResults),
-      };
-    } catch (error) {
-      console.error("An error occurred during the grading process:", error);
-      // Return null to indicate failure before the final DB update
-      return null;
+      gradingResult = await response.json();
+      console.log("Received grading result from API:", gradingResult);
+    } catch (apiError) {
+      console.error("Fatal: Failed to get grading result from API.", apiError);
     }
   }
 
-  console.log("Final Step: Updating database with payload:", updatePayload);
+  // shoudl create a new row in assignment_student as a JSON and put all grading relating things in there to make the schema more simple.
   const { error } = await supabase
     .from("assignment_students")
-    .update(updatePayload)
+    .update({
+      submitted_code: student_code,
+      submitted_at: date,
+      satus: satus,
+      autograder_output: gradingResult.output,
+      grade: gradingResult.score || null,
+    })
     .eq("student_id", student_id)
     .eq("assignment_id", numericAssignmentId);
-
   if (error) {
     console.error("Error saving assignment data:", error.message);
-    return null;
+    return;
+  } else {
+    return "success";
   }
-
-  console.log("Assignment data saved to database successfully.");
-  return "success";
 };

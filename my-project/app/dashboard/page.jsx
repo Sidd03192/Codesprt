@@ -178,7 +178,7 @@ export default function Dashboard() {
   };
 
   return isLoading ? (
-    <div>
+    <div className="flex h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]">
       <Spinner color="success" />
     </div>
   ) : (

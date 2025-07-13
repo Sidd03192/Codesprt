@@ -1,10 +1,34 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
+// For API routes - use this version
+export async function createClientForAPI(request, response) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_API_KEY,
+    {
+      cookies: {
+        getAll() {
+          return Object.entries(request.cookies || {}).map(([name, value]) => ({
+            name,
+            value,
+          }));
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+}
+
+// For Server Components and Server Actions - keep your original version
 export async function createClient() {
+  const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
 
-    return createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_API_KEY,
     {
@@ -26,5 +50,4 @@ export async function createClient() {
       },
     }
   );
-  
 }
