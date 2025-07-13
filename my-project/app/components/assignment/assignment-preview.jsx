@@ -1,7 +1,7 @@
 import React from "react";
 import Editor from "@monaco-editor/react";
-import Countdown from "react-countdown";
 import { Icon } from "@iconify/react";
+import Countdown from "react-countdown";
 import {
   Card,
   Button,
@@ -10,11 +10,11 @@ import {
   Select,
   SelectItem,
   Tooltip,
-  Spinner,
 } from "@heroui/react";
 import { RotateCcw, Settings, Save, Play, CloudUpload } from "lucide-react";
 
 export const AssignmentPreview = ({ assignment, onClose }) => {
+  console.log("assignment", assignment);
   const isDark = true;
   const title = assignment?.title || "Assignment Preview";
   const description =
@@ -22,10 +22,35 @@ export const AssignmentPreview = ({ assignment, onClose }) => {
   const codeTemplate =
     assignment?.code_template || "// No code template provided.";
   const language = assignment?.language || "java";
-
+  const [showBanner, setShowBanner] = React.useState(() => {
+    // Only show if not closed in this session
+    return sessionStorage.getItem("previewBannerClosed") !== "true";
+  });
+  const handleCloseBanner = () => {
+    sessionStorage.setItem("previewBannerClosed", "true");
+    setShowBanner(false);
+  };
+  
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-6xl h-[90vh] flex flex-col bg-zinc-900 text-white rounded-xl overflow-hidden">
+    <div className="min-h-screen bg-zinc-950 text-white p-6">
+      {showBanner && (
+  <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-fit max-w-[90vw]">
+    <div className="flex items-center gap-2 bg-red-600 text-white text-xs md:text-sm px-3 py-1.5 rounded-lg shadow-lg border border-red-700 backdrop-blur-sm">
+      <Icon icon="lucide:alert-triangle" className="text-white text-sm" />
+      <span>You are viewing a preview. This is not published.</span>
+      <Button
+        isIconOnly
+        size="sm"
+        variant="light"
+        onPress={handleCloseBanner}
+        className="ml-1 text-white hover:bg-white/10"
+      >
+        <Icon icon="lucide:x" className="text-white text-sm" />
+      </Button>
+    </div>
+  </div>
+)}
+      <Card className="w-full max-w-7xl mx-auto h-[90vh] flex flex-col bg-zinc-900 text-white rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/20">
           <h2 className="text-xl font-semibold">{title}</h2>
           <Button isIconOnly variant="light" onPress={onClose}>

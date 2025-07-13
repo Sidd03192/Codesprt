@@ -18,6 +18,7 @@ import { Code, CircleX } from "lucide-react";
 import CodeEditor from "../../components/editor/code-editor";
 import { executeCode } from "../../components/editor/api";
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
+import EditAssignmentPage from "../../components/assignment/edit-assignment";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -101,6 +102,10 @@ export const Assignments = ({ session, classes }) => {
   const [comments, setComments] = useState({});
   const [activeLine, setActiveLine] = useState(null);
   const [newComment, setNewComment] = useState("");
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [assignmentToEdit, setAssignmentToEdit] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState(null);
 
   const fetchAssignments = async () => {
     setLoading(true);
@@ -229,6 +234,7 @@ export const Assignments = ({ session, classes }) => {
             <Icon icon="lucide:plus" className="mr-1" />
             Create Assignment
           </Button>
+          {/* Create Assignment Modal */}
           <Modal
             isOpen={open}
             onClose={() => setOpen(false)}
@@ -250,6 +256,32 @@ export const Assignments = ({ session, classes }) => {
                 session={session}
                 classes={classes}
                 onClose={() => setOpen(false)}
+              />
+            </ModalContent>
+          </Modal>
+          {/* Edit Assignment Modal */}
+          <Modal
+            isOpen={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            closeButton={
+              <Button isIconOnly variant="light" color="danger">
+                <CircleX color="red" />
+              </Button>
+            }
+            className="max-h-[90vh] max-w-[90vw] overflow-y-auto"
+          >
+            <ModalContent className="w-full">
+              <ModalHeader className="flex border-zinc-800 bg-zinc-900">
+                <div className="flex items-center gap-3">
+                  <Code className="text-2xl" color="white" />
+                  <h1 className="text-xl font-semibold">Assignment Editor</h1>
+                </div>
+              </ModalHeader>
+              <EditAssignmentPage
+                session={session}
+                classes={classes}
+                assignment={assignmentToEdit}
+                onClose={() => setEditModalOpen(false)}
               />
             </ModalContent>
           </Modal>
@@ -325,19 +357,17 @@ export const Assignments = ({ session, classes }) => {
                               View Submissions
                             </Button>
                           )}
-                          <Button size="sm" variant="flat">
+                          <Button size="sm" variant="flat" onPress={() => {
+                            setAssignmentToEdit(assignment);
+                            setEditModalOpen(true);
+                          }}>
                             <Icon icon="lucide:edit" className="mr-1" />
                             Edit
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            color="danger"
-                            onPress={() => {
-                              setAssignmentToDelete(assignment);
-                              setDeleteModalOpen(true);
-                            }}
-                          >
+                          <Button size="sm" variant="flat" color="danger" onPress={() => {
+                            setAssignmentToDelete(assignment);
+                            setDeleteModalOpen(true);
+                          }}>
                             <Icon icon="lucide:trash-2" />
                           </Button>
                         </div>
