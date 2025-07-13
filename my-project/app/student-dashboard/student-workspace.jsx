@@ -525,8 +525,8 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                 </div>
               )}
               {activeTab === "results" && (
-                <div className="w-full h-full flex justify-center items-center  custom-scrollbar max-h-full overflow-scroll">
-                  <div className=" text-center w-full   max-h-full bg-transparent">
+                <div className="w-full h-full flex  custom-scrollbar max-h-full overflow-scroll">
+                  <div className="  w-full   max-h-full bg-transparent">
                     {/* <Icon
                       icon="lucide:bubbles"
                       className="mx-auto text-6xl text-foreground-400 mb-2"

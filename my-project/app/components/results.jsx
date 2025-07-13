@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Accordion, AccordionItem } from "@heroui/react";
+import { Accordion, AccordionItem, Divider } from "@heroui/react";
+import { Icon } from "@iconify/react";
 // --- Helper Components & Icons ---
 
 const CheckIcon = () => (
@@ -64,7 +65,7 @@ const CodeBlock = ({ content, language = "text", className = "" }) => {
 
   return (
     <pre
-      className={`bg-gray-800 rounded-md p-4 text-sm text-gray-200 overflow-x-auto ${className}`}
+      className={`bg-zinc-800 rounded-md p-4 text-sm  overflow-x-auto ${className}`}
     >
       <code className={`language-${language}`}>{formatContent(content)}</code>
     </pre>
@@ -78,7 +79,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-100">{title}</h3>
+          <h3 className="text-lg font-semibold ">{title}</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -112,6 +113,7 @@ const AccordionSection = ({
   itemOverrides,
   onOverrideChange,
   viewMode,
+  icon
 }) => {
   const [openItems, setOpenItems] = useState({});
 
@@ -137,49 +139,34 @@ const AccordionSection = ({
   const sectionMaxPoints = items.reduce((acc, item) => acc + item.maxPoints, 0);
 
   return (
-    <Accordion variant="splitted" className="mb-4">
-      {/* <button>
-        <h3 className="text-lg font-semibold text-gray-200">{title}</h3>
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-gray-300">
-            {sectionPoints} / {sectionMaxPoints} pts
-          </span>
-          <svg
-            // className={`h-5 w-5 text-gray-400 transition-transform ${
-            //   isSectionOpen ? "rotate-180" : ""
-            // }`}
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
-      </button> */}
-      <AccordionItem
-        title={<h3 className="text-lg font-semibold text-gray-200">{title}</h3>}
-        className="space-y-2 font-bold p-4 border border-t-0 border-gray-700 rounded-b-lg"
+    <Accordion  className="mb-4"       
+>
+      
+      <AccordionItem className="border border-divider rounded-lg px-3"
+      startContent={        <Icon icon= "lucide-list" className="text-xl text-secondary " />
+}
+        title={
+        
+        < >
+                <h3 className="text-lg font-semibold ">{title}</h3>
+        </>}
+
       >
         {items.map((item, index) => (
-          <div
+          <Accordion
+          isCompact
             key={index}
-            className="border border-gray-700 rounded-lg overflow-hidden"
+            className="border border-divider  rounded-lg overflow-hidden mb-2"
           >
-            <button
-              onClick={() => toggleItem(index)}
-              className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {item.status === "passed"}
-                {item.status === "failed"}
-                {item.status === "errored"}
-                <span className="font-medium text-gray-200">{item.name}</span>
+            <AccordionItem
+            
+            title={
+            <div className="flex items-center justify-between">
+           <div className="flex items-center gap-3">
+                {item.status === "passed" && <Icon icon="lucide-check" color="green" className="text-xl" ></Icon>}
+                {item.status === "failed" && <Icon icon="lucide-x" color= "red"  className="text-xl" />}
+                {item.status === "errored" && <Icon icon="lucide-triangle-alert" color="yellow"  className="text-xl" /> }
+                <span className="font-medium ">{item.name}</span>
               </div>
               <div className="flex items-center gap-4">
                 {viewMode === "teacher" ? (
@@ -188,33 +175,19 @@ const AccordionSection = ({
                     value={itemOverrides[index] ?? item.pointsAchieved}
                     onChange={(e) => onOverrideChange(index, e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-gray-900 border border-gray-600 rounded-md w-16 p-1 text-center font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className=" bg-zinc-700/60 border border-zinc-600 rounded-md w-16 p-1 text-center font-semibold focus:border-default border-[.5px]"
                   />
                 ) : (
-                  <span className="text-sm font-semibold text-gray-300">
+                  <span className="text-sm font-semibold">
                     {item.pointsAchieved} / {item.maxPoints} pts
                   </span>
                 )}
-                <svg
-                  className={`h-5 w-5 text-gray-400 transition-transform ${
-                    openItems[index] ? "rotate-180" : ""
-                  }`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </button>
-            {openItems[index] && (
-              <div className="p-4 bg-gray-900">
+                
+              </div> </div>
+            }
+            
+            >
+<div className="p-4 ">
                 {item.status === "errored" ? (
                   <div>
                     <h4 className="font-semibold text-red-300 mb-2">
@@ -228,21 +201,21 @@ const AccordionSection = ({
                 ) : (
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="font-semibold text-gray-300 mb-2">
+                      <h4 className="font-semibold  mb-2">
                         Expected Output
                       </h4>
-                      <CodeBlock content={item.expected} />
+                      <CodeBlock className="border border-default-700" content={item.expected} />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-300 mb-2">
+                      <h4 className="font-semibold  mb-2">
                         Your Output (Got)
                       </h4>
                       <CodeBlock
                         content={item.actual}
                         className={
                           item.status === "failed"
-                            ? "border border-red-700"
-                            : ""
+                            ? "border border-danger"
+                            : "border border-success"
                         }
                       />
                     </div>
@@ -260,8 +233,11 @@ const AccordionSection = ({
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </AccordionItem>
+              
+              
+            
+          </Accordion>
         ))}
       </AccordionItem>
     </Accordion>
@@ -370,45 +346,50 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
   };
 
   return (
-    <div className="   font-sans  my-8 text-white  mx-auto">
+    <div className="   font-sans text-white   mx-auto">
       {/* Header */}
-      <div className="p-6 border-b border-gray-700 flex justify-between items-start">
+      <div className="p-6  flex justify-between items-start items-center text-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Grading Results</h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <h2 className="text-3xl font-bold text-gray-100 ">Grading Results</h2>
+          <p className="text-sm text-gray-400 mt-1 ml-1">
             Graded on: {new Date(gradingOutput.gradedAt).toLocaleString()}
           </p>
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2 justify-end">
-            {viewMode === "teacher" && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={overallOverrideScore}
-                  onChange={(e) => setOverallOverrideScore(e.target.value)}
-                  placeholder="Pts"
-                  className="bg-gray-800 border border-gray-600 rounded-md w-20 p-2 text-center text-lg font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-                <button
-                  onClick={handleOverrideGrade}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1 px-3 rounded-md transition-colors"
-                >
-                  Override
-                </button>
-              </div>
-            )}
-            <p className="text-3xl font-bold text-gray-100">
+            
+            <div className="text-3xl font-bold text-gray-100">
+              {
+                viewMode==="teacher"?(
+                
+                <><input
+                    type="number"
+                    value={finalScore}
+                    onChange={(e) => onOverrideChange(index, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className=" bg-zinc-700/60 border border-zinc-600 rounded-md w-16 p-1 text-center font-semibold focus:border-default border-[.5px] mr-2"
+                  />
+              <span className="text-xl text-gray-400">/ {maxTotalPoints}</span>
+                </>
+                
+
+                ):
+                (
+                  <div className="text-3xl font-bold text-gray-100">
               {finalScore}{" "}
               <span className="text-xl text-gray-400">/ {maxTotalPoints}</span>
-            </p>
+            </div>
+                )
+              }
+              
+            </div>
           </div>
           <div className="mt-2">{getStatusBadge()}</div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="px-6">
         {gradingOutput.error && (
           <div className="bg-red-900/50 border border-red-700 p-4 rounded-lg mb-6">
             <h3 className="font-bold text-red-300">Compilation Error</h3>
@@ -466,7 +447,7 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
         )}
 
         {viewMode === "student" && gradingOutput.teacherFeedback && (
-          <div className="mb-8 bg-gray-800/50 border border-gray-700 p-4 rounded-lg">
+          <div className="mb-8 bg-zinc-800/30 border border-divider p-4 rounded-lg">
             <h3 className="text-lg font-semibold mb-2 text-gray-200">
               Feedback from Instructor
             </h3>
@@ -477,7 +458,7 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
         )}
 
         {viewMode === "student" && rubricContent && (
-          <div className="mb-8 bg-gray-800/50 border border-gray-700 p-4 rounded-lg">
+          <div className="mb-8 bg-gray-zinc/30 border border-divider p-4 rounded-lg">
             <h3 className="text-lg font-semibold mb-2 text-gray-200">
               Grading Rubric
             </h3>
@@ -493,15 +474,19 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
             setTestPointOverrides((prev) => ({ ...prev, [index]: value }))
           }
           viewMode={viewMode}
+                    icon = "test-tube"
+
         />
         <AccordionSection
           title="Styling"
+          
           items={gradingOutput.stylingResults}
           itemOverrides={stylingPointOverrides}
           onOverrideChange={(index, value) =>
             setStylingPointOverrides((prev) => ({ ...prev, [index]: value }))
           }
           viewMode={viewMode}
+          icon="braces"
         />
         <AccordionSection
           title="Requirements"
@@ -511,6 +496,7 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
             setReqPointOverrides((prev) => ({ ...prev, [index]: value }))
           }
           viewMode={viewMode}
+          icon="list-check"
         />
       </div>
 
@@ -671,34 +657,11 @@ export const Results = () => {
       "### Grading Rubric\n\n- **Correctness (25 pts):** Based on automated test cases.\n- **Styling (10 pts):** Code is clean and follows style guidelines.\n- **Requirements (20 pts):** All functional requirements are met.",
   };
 
-  const [currentView, setCurrentView] = useState("student");
+  const [currentView, setCurrentView] = useState("teacher");
 
   return (
     <div className="  ">
-      <div className="max-w-4xl mx-auto mb-6">
-        {/* <div className="flex justify-center bg-gray-800 rounded-lg p-1 w-fit mx-auto">
-          <button
-            onClick={() => setCurrentView("student")}
-            className={`px-6 py-2 text-sm font-medium rounded-md transition-colors ${
-              currentView === "student"
-                ? "bg-indigo-600 text-white"
-                : "text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            Student View
-          </button>
-          <button
-            onClick={() => setCurrentView("teacher")}
-            className={`px-6 py-2 text-sm font-medium rounded-md transition-colors ${
-              currentView === "teacher"
-                ? "bg-indigo-600 text-white"
-                : "text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            Teacher View
-          </button>
-        </div> */}
-      </div>
+     
       <GradingResults
         gradingOutput={sampleGradingOutput}
         viewMode={currentView}
