@@ -52,6 +52,7 @@ import Editor from "@monaco-editor/react";
 import { getAssignmentDetails, saveAssignment } from "./api";
 import { executeCode } from "../components/editor/api";
 import "../components/assignment/RichText/editor-styles.css"; // Import highlight.js theme
+import { Results } from "../components/results";
 import {
   Modal,
   ModalContent,
@@ -474,7 +475,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   };
 
   return (
-    <form>
+    <div>
       <div className="h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] p-4 flex gap-2">
         {/* Left Panel - Problem Description */}
         <Card
@@ -524,15 +525,16 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                 </div>
               )}
               {activeTab === "results" && (
-                <div className="w-full h-full flex justify-center items-center p-8 custom-scrollbar">
-                  <div className="space-y-4 text-center">
-                    <Icon
+                <div className="w-full h-full flex justify-center items-center  custom-scrollbar max-h-full overflow-scroll">
+                  <div className=" text-center w-full   max-h-full bg-transparent">
+                    {/* <Icon
                       icon="lucide:bubbles"
                       className="mx-auto text-6xl text-foreground-400 mb-2"
                     />
                     <p className="text-gray-400">
                       Relaxxx.... No grades or results available yet.
-                    </p>
+                    </p> */}
+                    <Results />
                   </div>
                 </div>
               )}
@@ -807,6 +809,6 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
           }
         `}</style>
       </div>
-    </form>
+    </div>
   );
 };
