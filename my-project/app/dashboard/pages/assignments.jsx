@@ -16,6 +16,7 @@ import {
 import { Icon } from "@iconify/react";
 import { Code, CircleX } from "lucide-react";
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
+import EditAssignmentPage from "../../components/assignment/edit-assignment";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -233,6 +234,30 @@ export const Assignments = ({ session, classes }) => {
                             <Icon icon="lucide:edit" className="mr-1" />
                             Edit
                           </Button>
+                          <Modal
+            isOpen={open}
+            onClose={() => setOpen(false)}
+            closeButton={
+              <Button isIconOnly variant="light" color="danger">
+                <CircleX color="red" />
+              </Button>
+            }
+            className="max-h-[90vh] max-w-[90vw] overflow-y-auto"
+          >
+            <ModalContent className="w-full">
+              <ModalHeader className="flex border-zinc-800 bg-zinc-900">
+                <div className="flex items-center gap-3">
+                  <Code className="text-2xl" color="white" />
+                  <h1 className="text-xl font-semibold">Assignment Editor</h1>
+                </div>
+              </ModalHeader>
+              <EditAssignmentPage
+                session={session}
+                classes={classes}
+                setOpen={() => setOpen(false)}
+              />
+            </ModalContent>
+          </Modal>
                           <Button size="sm" variant="flat" color="danger" onPress={() => {
                               setAssignmentToDelete(assignment);
                               setDeleteModalOpen(true);

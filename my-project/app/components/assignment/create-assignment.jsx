@@ -1,6 +1,6 @@
 // ... existing imports ...
 import { supabase } from "../../supabase-client";
-
+import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
@@ -80,7 +80,7 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [assignmentPreviewData, setAssignmentPreviewData] =
     React.useState(null);
-
+  const router = useRouter();
   useEffect(() => {
     const fetchStudents = async () => {
       if (formData.classId) {
@@ -323,18 +323,20 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
   };
 
   const handlePreview = () => {
-    const code = editorRef.current?.getValue?.(); // Get code from editor
+    const code = editorRef.current?.getValue?.();
+    const description = descriptionRef.current?.getHTML?.() || "<p>No description provided.</p>";
+  
     const previewData = {
       title: formData.title || "Untitled Assignment",
-      description: formData.description || "<p>No description provided.</p>", // Ensure description is in HTML string format if RichTextEditor provides it
+      description,
       code_template: code || "// No code provided",
-      language: selectedLanguage || "javascript",
-      // Add any other fields that AssignmentPreview might expect, e.g., constraints, example, testcases (though testcases might be out of scope for a simple preview)
-      // For now, focusing on title, description, code_template, and language.
+      language: selectedLanguage || "java",
     };
-    setAssignmentPreviewData(previewData);
-    setShowPreviewModal(true);
-    console.log("Previewing assignment with data:", previewData);
+    console.log("previewData:", previewData);
+    localStorage.setItem("assignmentData", JSON.stringify(previewData));
+    window.open("/preview", "_blank", "noopener,noreferrer");
+  
+    // Save to sessionStorage so preview page can fetch it (since we can't pass complex objects via query string)
   };
 
   // handling lines stuff
@@ -808,14 +810,9 @@ export default function CreateAssignmentPage({ session, classes, setOpen }) {
           </Card>
 
           <div className="flex justify-between">
-            <Button
-              size="lg"
-              variant="flat"
-              // startContent={<Icon icon="lucide:eye" />}
-              onPress={handlePreview}
-            >
-              See Preview
-            </Button>
+          <Button size="lg" variant="flat" onPress={handlePreview}>
+            See Preview
+          </Button>
 
             <div className="flex gap-2">
               <Button size="lg" variant="flat">

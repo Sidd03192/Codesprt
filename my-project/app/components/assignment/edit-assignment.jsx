@@ -1,6 +1,6 @@
 // ... existing imports ...
 import { supabase } from "../../supabase-client";
-
+import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
@@ -43,12 +43,13 @@ import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
 import { AssignmentPreview } from "./assignment-preview";
 import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
-export default function EditAssignmentPage({ session, classes, setOpen, assignment }) {
+export default function EditAssignmentPage({ session, classes, setOpen }) {
   const [formData, setFormData] = React.useState({
     classId: "",
     className: "",
     title: "",
     description: "",
+
     selectedStudentIds: [],
     codeTemplate:
       "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
@@ -65,6 +66,7 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
     checkStyle: false,
   });
 
+  const [selectedFile, setSelectedFile] = React.useState(1);
   const [selectedLanguage, setSelectedLanguage] = React.useState();
   const editorRef = React.useRef(null);
   const descriptionRef = useRef(null);
@@ -78,7 +80,11 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [assignmentPreviewData, setAssignmentPreviewData] =
     React.useState(null);
+  const router = useRouter();
+  useEffect(() => {
+    setFormData(JSON.parse)
 
+  }, [])
   useEffect(() => {
     const fetchStudents = async () => {
       if (formData.classId) {
@@ -321,18 +327,20 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
   };
 
   const handlePreview = () => {
-    const code = editorRef.current?.getValue?.(); // Get code from editor
+    const code = editorRef.current?.getValue?.();
+    const description = descriptionRef.current?.getHTML?.() || "<p>No description provided.</p>";
+  
     const previewData = {
       title: formData.title || "Untitled Assignment",
-      description: formData.description || "<p>No description provided.</p>", // Ensure description is in HTML string format if RichTextEditor provides it
+      description,
       code_template: code || "// No code provided",
-      language: selectedLanguage || "javascript",
-      // Add any other fields that AssignmentPreview might expect, e.g., constraints, example, testcases (though testcases might be out of scope for a simple preview)
-      // For now, focusing on title, description, code_template, and language.
+      language: selectedLanguage || "java",
     };
-    setAssignmentPreviewData(previewData);
-    setShowPreviewModal(true);
-    console.log("Previewing assignment with data:", previewData);
+    console.log("previewData:", previewData);
+    localStorage.setItem("assignmentData", JSON.stringify(previewData));
+    window.open("/preview", "_blank", "noopener,noreferrer");
+  
+    // Save to sessionStorage so preview page can fetch it (since we can't pass complex objects via query string)
   };
 
   // handling lines stuff
@@ -365,7 +373,7 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
 
   return (
     <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
-      <main className="mx-auto w-full p-4 pb-5">
+      <main className="mx-auto w-full p-4 pb-5 custom-scrollbar">
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Assignment Details Card */}
           <Card className="bg-zinc-800/40 p-6 w-full">
@@ -509,10 +517,10 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
           {/* Code Template and Settings Split Screen */}
           <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
             {/* Code Template Section - 60% width */}
-            <Card className="col-span-1 xl:col-span-3 bg-zinc-800/40 p-6">
-              <div className="mb-6 flex items-center justify-between">
+            <Card className="col-span-1 xl:col-span-3 bg-zinc-800/40 ">
+              <div className=" flex items-center justify-between px-6 pt-6">
                 <h2 className="text-xl font-semibold">Code Template</h2>
-                <div className="flex items-center gap-2 w-fit">
+                <div className="flex items-center gap-2 ">
                   <Select
                     placeholder="Select a language"
                     className="min-w-[120px]"
@@ -537,7 +545,13 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
                     <Icon icon="lucide:upload" className="" />
                     Upload
                   </Button>
-
+                  <Button
+                    variant="flat"
+                    color="secondary"
+                    className="min-w-[130px] "
+                  >
+                    <Icon icon="lucide:wand-sparkles" /> AI Generate
+                  </Button>
                   <Button
                     variant="flat"
                     color="success"
@@ -559,18 +573,56 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
                 </div>
               </div>
 
-              <p className="mb-4 text-small text-zinc-400">
-                Click on the line numbers to lock/unlock lines for students.
-              </p>
+              <div className="w-full flex justify-between pr-6 items-end">
+                <Tabs
+                  color="secondary"
+                  size="lg"
+                  variant="underlined"
+                  defaultSelectedKey={1}
+                  selectedKey={selectedFile}
+                  onSelectionChange={setSelectedFile}
+                  aria-label="Tabs sizes"
+                >
+                  <Tab key={1} title="Student Template"></Tab>
+                  <Tab key={2} title="Testing"></Tab>
+                </Tabs>
+                <div className="mb-4 text-sm text-zinc-400 flex items-center">
+                  <Icon
+                    icon="lucide:lock"
+                    className="mr-2 text-base text-red-700"
+                  />
+                  <span>
+                    {" "}
+                    {/* It's also good practice to wrap your text in a span */}
+                    Click on the line numbers to lock/unlock lines for students.
+                  </span>
+                </div>
+              </div>
+              {selectedFile == 1 && (
+                <CodeEditor
+                  classname="w-full"
+                  height={"600px"}
+                  language={selectedLanguage || "java"}
+                  editorRef={editorRef}
+                  role="teacher"
+                  starterCode={"// this file will be visible to students."}
+                  handleHiddenLinesChange={handleHiddenLinesChange}
+                  handleLockedLinesChange={handleLockedLinesChange}
+                />
+              )}
 
-              <CodeEditor
-                height={"600px"}
-                language={selectedLanguage || "java"}
-                editorRef={editorRef}
-                role="teacher"
-                handleHiddenLinesChange={handleHiddenLinesChange}
-                handleLockedLinesChange={handleLockedLinesChange}
-              />
+              {selectedFile == 2 && (
+                <CodeEditor
+                  classname="w-full"
+                  height={"600px"}
+                  language={selectedLanguage || "java"}
+                  editorRef={editorRef}
+                  role="student"
+                  starterCode={
+                    "// this file can be used to write test cases for students."
+                  }
+                />
+              )}
 
               {output && (
                 <div className="mt-4 p-4 bg-black text-white rounded-lg">
@@ -762,14 +814,9 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
           </Card>
 
           <div className="flex justify-between">
-            <Button
-              size="lg"
-              variant="flat"
-              // startContent={<Icon icon="lucide:eye" />}
-              onPress={handlePreview}
-            >
-              See Preview
-            </Button>
+          <Button size="lg" variant="flat" onPress={handlePreview}>
+            See Preview
+          </Button>
 
             <div className="flex gap-2">
               <Button size="lg" variant="flat">
@@ -786,6 +833,22 @@ export default function EditAssignmentPage({ session, classes, setOpen, assignme
               </Button>
             </div>
           </div>
+          <style jsx>{`
+            .custom-scrollbar::-webkit-scrollbar {
+              width: 6px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 3px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+              background: rgba(255, 255, 255, 0.2);
+              border-radius: 3px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+              background: rgba(255, 255, 255, 0.3);
+            }
+          `}</style>
         </form>
         {showPreviewModal && assignmentPreviewData && (
           <AssignmentPreview
