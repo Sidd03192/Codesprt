@@ -43,7 +43,7 @@ import CodeEditor from "../editor/code-editor";
 import { Testcase } from "./testcases";
 import { AssignmentPreview } from "./assignment-preview";
 import { getClasses, fetchStudentsForClass } from "../../dashboard/api";
-export default function EditAssignmentPage({ session, classes, setOpen }) {
+export default function CreateAssignmentPage({ assignment_id, session, classes, setOpen }) {
   const [formData, setFormData] = React.useState({
     classId: "",
     className: "",
@@ -55,7 +55,6 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
       "// Write your code template here\nfunction example() {\n  // This line can be locked\n  console.log('Hello world');\n}\n",
     dueDate: null,
     startDate: null,
-    testcases: [],
     lockedLines: [],
     hiddenLines: [],
     allowLateSubmission: false,
@@ -76,15 +75,69 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
   const [students, setStudents] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [dueDate, setDueDate] = useState(null);
-  const [assignmentTitle, setAssignmentTitle] = useState("");
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [assignmentPreviewData, setAssignmentPreviewData] =
     React.useState(null);
-  const router = useRouter();
-  useEffect(() => {
-    setFormData(JSON.parse)
+  const router = useRouter();  const [testcases, setTestcases] = useState([]);
 
-  }, [])
+  useEffect(() => {
+    const fetchAssignmentData = async () => {
+      const { data, error } = await supabase
+        .from("assignments")
+        .select("*")
+        .eq("id", assignment_id)
+        .single();
+  
+      if (error || !data) {
+        console.error("Error fetching assignment:", error);
+        return;
+      }
+  
+
+      if (editorRef.current?.setValue && data.code_template) {
+        editorRef.current.setValue(data.code_template);
+      }
+  
+      if (descriptionRef.current?.setContent && data.description) {
+        descriptionRef.current.setContent(data.description);
+      }
+  
+      setFormData((prev) => ({
+        ...prev,
+        classId: data.class_id?.toString() ?? "",
+        title: data.title ?? "",
+        description: data.description ?? "",
+        codeTemplate: data.code_template ?? "",
+        dueDate: data.due_at ? new Date(data.due_at) : null,
+        startDate: data.open_at ? new Date(data.open_at) : null,
+        lockedLines: data.locked_lines ?? [],
+        hiddenLines: data.hidden_lines ?? [],
+        allowLateSubmission: data.allow_late_submission ?? false,
+        autoGrade: data.auto_grade ?? false,
+        allowAutocomplete: data.allow_auto_complete ?? false,
+        showResults: data.show_results ?? false,
+        allowCopyPaste: data.allow_copy_paste ?? false,
+        checkStyle: data.check_style ?? false,
+        testcases: data.test_cases ?? [],
+      }));
+  
+      setSelectedLanguage(data.language || "java");
+  
+      if (Array.isArray(data.test_cases)) {
+        setTestcases(data.test_cases);
+      }
+  
+      if (data.class_id) {
+        const fetchedStudents = await fetchStudentsForClass(data.class_id);
+        setStudents(fetchedStudents);
+      }
+    };
+  
+    fetchAssignmentData();
+  }, [assignment_id]);
+  
+  
+
   useEffect(() => {
     const fetchStudents = async () => {
       if (formData.classId) {
@@ -101,8 +154,6 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
 
     fetchStudents();
   }, [formData.classId]);
-
-  const selectedClass = classes?.find((c) => c.id === formData.classId) || null;
 
   const handleClassChange = useCallback((classId, className) => {
     // updates class Id
@@ -188,24 +239,23 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
     fileInputRef.current?.click();
   };
 
-  const handleSubmit = async (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
-    // setIsSubmitting(true); // Start loading
+    setIsSubmitting(true);
     console.log("Form submitted:", formData);
-
+ 
     const code = editorRef.current.getValue();
     const description = descriptionRef.current.getJSON();
     const assignmentData = {
-      class_id: formData.classId, // need to update thsi
+      class_id: formData.classId,
       teacher_id: session.user.id,
       title: formData.title,
-      description: description, // Assuming this holds the text content from RichTextEditor
+      description: description,
       language: selectedLanguage,
       code_template: code,
-      hints: "", // To be implemented
+      hints: "",
       open_at: startDate.toString(),
       due_at: dueDate.toString(),
-      created_at: new Date().toISOString(),
       status: "inactive",
       test_cases: formData.testcases,
       locked_lines: formData.lockedLines,
@@ -217,112 +267,66 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
       show_results: formData.showResults,
       check_style: formData.checkStyle,
     };
-
-    console.log("Submitting assignmentData to the database:", assignmentData);
-
+ 
     try {
-      const { data: assignmentResult, error: assignmentError } = await supabase
+      const { error: updateError } = await supabase
         .from("assignments")
-        .insert([assignmentData])
-        .select();
-
-      if (assignmentError) {
-        console.error("Error inserting assignment:", assignmentError);
-
+        .update(assignmentData)
+        .eq("id", assignment_id); // Update the assignment by ID
+ 
+      if (updateError) {
+        console.error("Error updating assignment:", updateError);
         addToast({
-          title: "Unexpected Error",
-          description: "An unexpected error occurred. Please try again.",
+          title: "Error",
+          description: "Failed to update assignment.",
           color: "danger",
           duration: 5000,
           variant: "solid",
         });
-        setIsSubmitting(false); // Stop loading
         return;
       }
-
-      console.log("Assignment created successfully:", assignmentResult);
-
-      if (assignmentResult && assignmentResult.length > 0) {
-        const newAssignmentId = assignmentResult[0].id;
-
-        if (
-          formData.selectedStudentIds &&
-          formData.selectedStudentIds.length > 0
-        ) {
-          const assignmentStudentData = formData.selectedStudentIds.map(
-            (studentId) => ({
-              assignment_id: newAssignmentId,
-              student_id: studentId,
-              start_date: startDate.toString(),
-              title: formData.title,
-              due_date: dueDate.toString(),
-            })
-          );
-
-          console.log(
-            "Submitting assignmentStudentData:",
-            assignmentStudentData
-          );
-
-          const {
-            data: studentAssignmentResult,
-            error: studentAssignmentError,
-          } = await supabase
-            .from("assignment_students")
-            .insert(assignmentStudentData);
-
-          if (studentAssignmentError) {
-            console.error(
-              "Error inserting student assignments:",
-              studentAssignmentError
-            );
-            addToast({
-              title: "Unexpected Error",
-              description: "An unexpected error occurred. Please try again.",
-              color: "danger",
-              duration: 5000,
-              variant: "solid",
-            });
-            // Note: Here, the assignment is created, but student association failed.
-            // You might want to inform the user or handle this case specifically.
-            setIsSubmitting(false); // Stop loading
-            return;
-          }
-          console.log(
-            "Student assignments created successfully:",
-            studentAssignmentResult
-          );
-        } else {
-          console.log("No students selected for this assignment.");
-        }
-        addToast({
-          title: "Assignment Created Successfully",
-          description:
-            "The assignment will now be visible to you in the assignments page",
-          color: "success",
-          duration: 5000,
-          placement: "top-center",
-          variant: "solid",
-        });
-      } else {
-        console.error(
-          "Assignment creation returned no result or empty result array."
-        );
-        addToast({
-          title: "Unexpected Error",
-          description: "An unexpected error occurred. Please try again.",
-          color: "danger",
-          duration: 5000,
-          placement: "top-center",
-          variant: "solid",
-        });
-      }
-    } catch (error) {
-      console.error("An unexpected error occurred during submission:", error);
-      alert(`An unexpected error occurred: ${error.message}`);
+ 
+      addToast({
+        title: "Updated Successfully",
+        description: "Assignment was updated.",
+        color: "success",
+        duration: 5000,
+        placement: "top-center",
+        variant: "solid",
+      });
+    } catch (err) {
+      console.error("Unexpected error during update:", err);
+      alert(`An unexpected error occurred: ${err.message}`);
     } finally {
-      setIsSubmitting(false); // Stop loading in all cases
-      setOpen(false);
+      setIsSubmitting(false);
+      setOpen(false); // Close modal/page
+    }
+  };
+  
+
+  const uploadTestcases = async () => {
+    try {
+      const fileWrapper = testcases[0];
+
+      // 3. Get the ACTUAL file from the wrapper object
+      const actualFileToUpload = fileWrapper.file;
+      console.log("file to upload", fileWrapper.file);
+      const fileExtension = formData.title;
+      const fileName = `${Date.now()}.${fileExtension}`;
+      const filePath = `test-cases/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from("testing")
+        .upload(filePath, actualFileToUpload);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+      return filePath;
+    } catch (error) {
+      console.error("Error during upload:", error.message);
+      alert(`Upload failed: ${error.message}`);
+    } finally {
     }
   };
 
@@ -374,8 +378,8 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
   return (
     <div className=" bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]  text-zinc-100">
       <main className="mx-auto w-full p-4 pb-5 custom-scrollbar">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Assignment Details Card */}
+        <form onSubmit={handleUpdate} className="space-y-8">
+          {/* Assignment  Card */}
           <Card className="bg-zinc-800/40 p-6 w-full">
             <h2 className="mb-6 text-xl font-semibold">Assignment Details</h2>
             <div className="grid  gap-6 lg:grid-cols-2">
@@ -649,7 +653,7 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
                   }
                 >
                   {" "}
-                  <Testcase formData={formData} setFormData={setFormData} />
+                  <Testcase testcases={testcases} setTestcases={setTestcases} />
                 </Tab>
 
                 <Tab
@@ -794,17 +798,13 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
                         Allow late submissions
                       </Checkbox>
                       <Tooltip content="Displays testcases results to students immediately after submission">
-                        <Checkbox
-                          value={formData.showResults}
-                          onValueChange={(value) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              showResults: value,
-                            }))
-                          }
-                        >
-                          Show results immediately
-                        </Checkbox>
+                      <Checkbox
+                        isSelected={formData.showResults}
+                        onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, showResults: value }))
+                        }>
+                        Show results immediately
+                      </Checkbox>
                       </Tooltip>
                     </div>
                   </div>
@@ -829,7 +829,7 @@ export default function EditAssignmentPage({ session, classes, setOpen }) {
                 isLoading={isSubmitting}
                 spinner={<Spinner />}
               >
-                {isSubmitting ? "Creating..." : "Create Assignment"}
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

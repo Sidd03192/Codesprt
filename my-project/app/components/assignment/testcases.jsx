@@ -75,15 +75,15 @@ export const Testcase = ({ testcases, setTestcases }) => {
   // Keep this useMemo as it is in the artifact. Its job is to calculate the
   // validation state for the UI to display, which is a perfect use for useMemo.
   const validationResult = useMemo(() => {
-    if (testcases.length === 0) {
+    if (testcases?.length === 0) {
       return null;
     }
-    const hasTestJava = testcases.some((file) => {
+    const hasTestJava = testcases?.some((file) => {
       if (file.name.toLowerCase() === "test.java") return true;
       if (file.isZip && file.contents?.some((c) => c.isTestJava)) return true;
       return false;
     });
-    const isZipPresent = testcases.some((file) => file.isZip);
+    const isZipPresent = testcases?.some((file) => file.isZip);
     return { hasTestJava, isZipPresent };
   }, [testcases]);
 
@@ -201,17 +201,17 @@ export const Testcase = ({ testcases, setTestcases }) => {
         </label>
 
         {/* Uploaded Files List */}
-        {testcases.length > 0 && (
+        {testcases?.length > 0 && (
           <div className=" rounded-2xl shadow-2xl  mt-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-medium font-medium">Uploaded Files </h3>
               <p className=" rounded-full text-sm font-medium">
-                {testcases.length} file
-                {testcases.length !== 1 ? "s" : ""}
+                {testcases?.length} file
+                {testcases?.length !== 1 ? "s" : ""}
               </p>
             </div>
             <div>
-              {testcases.map((file) => (
+              {testcases?.map((file) => (
                 <React.Fragment key={file.id}>
                   <div
                     className={`flex items-center p-3 rounded-lg transition-colors border border-border ${
@@ -306,7 +306,7 @@ export const Testcase = ({ testcases, setTestcases }) => {
         )}
 
         {/* Empty State */}
-        {testcases.length === 0 && !processing && (
+        {testcases?.length === 0 && !processing && (
           <div className="text-center py-16">
             <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg font-medium">
@@ -319,7 +319,7 @@ export const Testcase = ({ testcases, setTestcases }) => {
         )}
 
         {/* Processing State */}
-        {processing && testcases.length == 0 && (
+        {processing && testcases?.length == 0 && (
           <div className="text-center py-16">
             <Spinner color="primary" />
             <p className="text-gray-500 text-lg font-medium">Processing...</p>

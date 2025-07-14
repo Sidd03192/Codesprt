@@ -277,12 +277,12 @@ export const Assignments = ({ session, classes }) => {
                   <h1 className="text-xl font-semibold">Assignment Editor</h1>
                 </div>
               </ModalHeader>
-              <EditAssignmentPage
+              {assignmentToEdit && <EditAssignmentPage
                 session={session}
                 classes={classes}
-                assignment={assignmentToEdit}
+                assignment_id={assignmentToEdit.id}
                 onClose={() => setEditModalOpen(false)}
-              />
+              />}
             </ModalContent>
           </Modal>
         </CardHeader>
