@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Accordion, AccordionItem, Divider } from "@heroui/react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Accordion, AccordionItem, Button, Divider, ScrollShadow, Textarea } from "@heroui/react";
 import { Icon } from "@iconify/react";
 // --- Helper Components & Icons ---
 
@@ -65,9 +65,9 @@ const CodeBlock = ({ content, language = "text", className = "" }) => {
 
   return (
     <pre
-      className={`bg-zinc-800 rounded-md p-4 text-sm  overflow-x-auto ${className}`}
+      className={`bg-zinc-800  rounded-2xl p-4 text-sm  overflow-x-auto ${className}`}
     >
-      <code className={`language-${language}`}>{formatContent(content)}</code>
+      <code className={`language-javascript `}>{formatContent(content)}</code>
     </pre>
   );
 };
@@ -142,7 +142,7 @@ const AccordionSection = ({
     <Accordion  className="mb-4"       
 >
       
-      <AccordionItem className="border border-divider rounded-lg px-3"
+      <AccordionItem className="border border-divider rounded-2xl px-3"
       startContent={        <Icon icon= "lucide-list" className="text-xl text-secondary " />
 }
         title={
@@ -170,18 +170,25 @@ const AccordionSection = ({
               </div>
               <div className="flex items-center gap-4">
                 {viewMode === "teacher" ? (
-                  <input
-                    type="number"
-                    value={itemOverrides[index] ?? item.pointsAchieved}
-                    onChange={(e) => onOverrideChange(index, e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className=" bg-zinc-700/60 border border-zinc-600 rounded-md w-16 p-1 text-center font-semibold focus:border-default border-[.5px]"
-                  />
-                ) : (
-                  <span className="text-sm font-semibold">
-                    {item.pointsAchieved} / {item.maxPoints} pts
-                  </span>
-                )}
+                      <div className="flex items-center gap-2 text-sm">
+                        <input
+                          type="number"
+                          value={itemOverrides[index] ?? item.pointsAchieved}
+                          onChange={(e) =>
+                            onOverrideChange(index, e.target.value)
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-zinc-700/60 border-[.5px] border-zinc-600 rounded-xl max-w-12 p-1 text-center font-semibold focus:border-default "
+                        />
+                        <span className="text-gray-400">
+                          / {item.maxPoints} pts
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-semibold">
+                        {item.pointsAchieved} / {item.maxPoints} pts
+                      </span>
+                    )}
                 
               </div> </div>
             }
@@ -244,12 +251,15 @@ const AccordionSection = ({
   );
 };
 
-// --- Main GradingResults Component ---
 const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
   const [feedback, setFeedback] = useState(gradingOutput.teacherFeedback || "");
+  
+  // --- MODIFICATION START ---
   const [overallOverrideScore, setOverallOverrideScore] = useState(
-    gradingOutput.gradeOverride || ""
+     gradingOutput.gradeOverride != null ? String(gradingOutput.gradeOverride) : ""
   );
+  // --- MODIFICATION END ---
+  
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [isRubricModalOpen, setIsRubricModalOpen] = useState(false);
   const [rubricContent, setRubricContent] = useState(
@@ -295,7 +305,13 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
     ].reduce((acc, item) => acc + item.maxPoints, 0);
   }, [gradingOutput]);
 
-  const finalScore = gradingOutput.gradeOverride ?? calculatedTotalPoints;
+  // --- MODIFICATION START ---
+  const finalScore =
+    overallOverrideScore !== "" && !isNaN(parseFloat(overallOverrideScore))
+      ? parseFloat(overallOverrideScore)
+      : calculatedTotalPoints;
+  // --- MODIFICATION END ---
+  
   const scorePercentage =
     maxTotalPoints > 0 ? (finalScore / maxTotalPoints) * 100 : 0;
 
@@ -346,43 +362,43 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
   };
 
   return (
-    <div className="   font-sans text-white   mx-auto">
+    <div className="font-sans  mx-auto">
       {/* Header */}
-      <div className="p-6  flex justify-between items-start items-center text-center">
+      <div className="p-6 flex justify-between items-start">
         <div>
-          <h2 className="text-3xl font-bold text-gray-100 ">Grading Results</h2>
+          <h2 className="text-3xl font-bold text-gray-100">Grading Results</h2>
           <p className="text-sm text-gray-400 mt-1 ml-1">
             Graded on: {new Date(gradingOutput.gradedAt).toLocaleString()}
           </p>
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2 justify-end">
-            
-            <div className="text-3xl font-bold text-gray-100">
-              {
-                viewMode==="teacher"?(
-                
-                <><input
+            <div className="text-3xl font-bold \">
+             {/* --- MODIFICATION START --- */}
+              {viewMode === "teacher" ? (
+                <div className="flex items-baseline ">
+                  <input
                     type="number"
-                    value={finalScore}
-                    onChange={(e) => onOverrideChange(index, e.target.value)}
+                    value={overallOverrideScore}
+                    onChange={(e) => setOverallOverrideScore(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    className=" bg-zinc-700/60 border border-zinc-600 rounded-md w-16 p-1 text-center font-semibold focus:border-default border-[.5px] mr-2"
+                    placeholder={calculatedTotalPoints.toFixed(0)}
+                    className="bg-zinc-700/60 border-[.5px] border-zinc-600 rounded-xl max-w-20 p-1 text-center font-semibold focus:border-default mr-2 "
                   />
-              <span className="text-xl text-gray-400">/ {maxTotalPoints}</span>
-                </>
-                
-
-                ):
-                (
-                  <div className="text-3xl font-bold text-gray-100">
-              {finalScore}{" "}
-              <span className="text-xl text-gray-400">/ {maxTotalPoints}</span>
-            </div>
-                )
-              }
-              
-            </div>
+                  <span className="text-xl \">
+                    / {maxTotalPoints}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold \">
+                  {finalScore.toFixed(2)}{" "}
+                  <span className="text-xl \">
+                    / {maxTotalPoints}
+                  </span>
+                </div>
+              )}
+              {/* --- MODIFICATION END --- */}
+            </div> 
           </div>
           <div className="mt-2">{getStatusBadge()}</div>
         </div>
@@ -390,6 +406,7 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
 
       {/* Main Content */}
       <div className="px-6">
+        {/* ... (rest of the component remains the same) ... */}
         {gradingOutput.error && (
           <div className="bg-red-900/50 border border-red-700 p-4 rounded-lg mb-6">
             <h3 className="font-bold text-red-300">Compilation Error</h3>
@@ -402,56 +419,49 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
 
         {viewMode === "teacher" && (
           <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-2 text-gray-200">
+            <div className="flex justify-between items-center"><h3 className="text-lg font-semibold mb-2 ">
               Teacher Controls
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
+              <Button
+                    onClick={() => setIsRubricModalOpen(true)}
+                    variant="flat"
+                    color="secondary"
+                    className="max-w-28"
+                  >
+                    Rubric
+                  </Button>
+            </div>
+            
+            <div className="">
+              <div className=" ">
+                  <label className="block text-md font-medium  mb-1">
                   Feedback
                 </label>
-                <textarea
+                  
+                
+                <Textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Provide feedback..."
-                  className="w-full bg-gray-800 border border-gray-600 rounded-md p-3 h-28 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  variant="bordered"
+                  size="lg"
+                  
+                  className="w-full p-8   rounded-lg p-3 min-h-32 text-xl"
                 />
-                <button
-                  onClick={handleSaveFeedback}
-                  className="mt-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md"
-                >
-                  Save Feedback
-                </button>
+                
               </div>
-              <div className="flex flex-col justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    Rubric
-                  </label>
-                  <button
-                    onClick={() => setIsRubricModalOpen(true)}
-                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md"
-                  >
-                    Manage Rubric
-                  </button>
-                </div>
-                <button
-                  onClick={() => setIsLogsModalOpen(true)}
-                  className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md"
-                >
-                  View Raw Logs
-                </button>
-              </div>
+              
             </div>
+            <Divider/>
           </div>
         )}
 
         {viewMode === "student" && gradingOutput.teacherFeedback && (
           <div className="mb-8 bg-zinc-800/30 border border-divider p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 text-gray-200">
+            <h3 className="text-lg font-semibold mb-2">
               Feedback from Instructor
             </h3>
-            <p className="text-gray-300 whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap">
               {gradingOutput.teacherFeedback}
             </p>
           </div>
@@ -462,10 +472,27 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
             <h3 className="text-lg font-semibold mb-2 text-gray-200">
               Grading Rubric
             </h3>
-            <p className="text-gray-300 whitespace-pre-wrap">{rubricContent}</p>
+            <p className="text-gray-300 whitespace-pre-wrap">
+              {rubricContent}
+            </p>
           </div>
         )}
-
+        {viewMode === "teacher" &&
+        <div className="flex justify-between items-center  mb-4">
+                  <label className="block text-lg font-medium  mb-1">
+                  Testcases
+                </label>
+                   <Button
+                  onClick={() => setIsLogsModalOpen(true)}
+                  variant="flat"
+                  color="primary"
+                >
+                  View Raw Logs
+                </Button>
+                </div>
+        }
+        
+      
         <AccordionSection
           title="Test Cases"
           items={gradingOutput.testResults}
@@ -474,12 +501,10 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
             setTestPointOverrides((prev) => ({ ...prev, [index]: value }))
           }
           viewMode={viewMode}
-                    icon = "test-tube"
-
+          icon="test-tube"
         />
         <AccordionSection
           title="Styling"
-          
           items={gradingOutput.stylingResults}
           itemOverrides={stylingPointOverrides}
           onOverrideChange={(index, value) =>
@@ -498,6 +523,18 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
           viewMode={viewMode}
           icon="list-check"
         />
+        <div className="flex justify-end gap-2">
+
+          <Button
+                  onClick={handleSaveFeedback}
+                  variant="flat"
+                  color="primary"
+                >
+                  Save & Next
+                </Button>
+        </div>
+        
+                
       </div>
 
       {/* Modals */}
@@ -561,6 +598,63 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
     </div>
   );
 };
+const SimpleStudentScroller = ({ students }) => {
+  const scrollContainerRef = useRef(null);
+
+  // This function scrolls the container left or right
+  const scroll = (scrollOffset) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: scrollOffset, behavior: 'smooth' });
+    }
+  };
+
+  return (
+
+
+// Assuming 'Icon', 'students', and 'scroll' are defined elsewhere
+
+// --- Corrected Component Layout ---
+<>
+
+<div className="flex items-center w-full max-w-4xl my-3 mx-auto">
+
+  {/* Left Arrow Button */}
+  <Button isIconOnly onClick={() => scroll(-300)} className="bg-transparent">
+    <Icon icon={"lucide-chevron-left"} className="text-xl" />
+  </Button>
+
+  {/* Stretchy Middle Section */}
+  <div className="flex-1 min-w-0"> {/* This is the key fix */}
+    <ScrollShadow
+      ref={scrollContainerRef}
+      orientation="horizontal"
+      
+      className="custom-scrollbar" 
+    >
+      {/* The ref on this div was removed */}
+      <div className="flex gap-4 p-2">
+        {students.map((student, index) => (
+          <Button variant="flat" key={index} className="flex-shrink-0 rounded-full">
+            {student}
+          </Button>
+        ))}
+      </div>
+    </ScrollShadow>
+  </div>
+
+  {/* Right Arrow Button */}
+  <Button isIconOnly onClick={() => scroll(300)} className="bg-transparent">
+    <Icon icon={"lucide-chevron-right"} className="text-xl" />
+  </Button>
+
+ 
+</div>
+<Divider></Divider>
+</>
+  );
+};
+
+export default SimpleStudentScroller;
 
 // --- Example Usage Wrapper ---
 export const Results = () => {
@@ -658,11 +752,16 @@ export const Results = () => {
   };
 
   const [currentView, setCurrentView] = useState("teacher");
-
+const students = [
+    'Emma Johnson', 'Liam Smith', 'Olivia Davis', 'Noah Wilson', 'Ava Brown',
+    'William Jones', 'Sophia Garcia', 'James Miller', 'Isabella Rodriguez', 
+    'Benjamin Martinez', 'Charlotte Anderson', 'Lucas Taylor', 'Amelia Thomas',
+    'Mason Jackson', 'Harper White', 'Ethan Lee', 'Mia Clark', 'Alexander Lewis'
+  ];
   return (
-    <div className="  ">
-     
-      <GradingResults
+    <div className=" ">
+        <SimpleStudentScroller students={students}/>
+      <GradingResults className="pb-10"
         gradingOutput={sampleGradingOutput}
         viewMode={currentView}
       />
