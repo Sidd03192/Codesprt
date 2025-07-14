@@ -18,7 +18,7 @@ import { supabase } from "../supabase-client";
 import { useEffect, useState } from "react";
 // Add page imports
 import { Overview } from "./pages/overview";
-import { Assignments } from "./pages/assignments";
+import { Assignments } from "./pages/assignments/page";
 import { Gradebook } from "./pages/gradebook";
 import { Classroom } from "./pages/classroom";
 
