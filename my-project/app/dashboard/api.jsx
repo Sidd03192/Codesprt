@@ -1,5 +1,8 @@
+"use server"
+
 import { supabase } from ".././supabase-client";
 import { useToast } from "@heroui/react";
+
 export const insertUserIfNew = async (role) => {
   const {
     data: { user },
@@ -63,3 +66,10 @@ export async function fetchStudentsForClass(classId) {
 
   return data;
 }
+
+export async function fetchStudentsForAssignment(assignmentId) {
+  console.log("Fetching students for assignment:", assignmentId);
+    const supabase = await createClient();
+  
+}
+

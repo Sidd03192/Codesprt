@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Accordion, AccordionItem, Button, Divider, ScrollShadow, Textarea } from "@heroui/react";
+import { Accordion, AccordionItem, Button, Divider, ScrollShadow, Textarea, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 // --- Helper Components & Icons ---
 
@@ -251,7 +251,7 @@ const AccordionSection = ({
   );
 };
 
-const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
+const GradingResults = ({ gradingOutput, viewMode , student }) => {
   const [feedback, setFeedback] = useState(gradingOutput.teacherFeedback || "");
   
   // --- MODIFICATION START ---
@@ -366,7 +366,7 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
       {/* Header */}
       <div className="p-6 flex justify-between items-start">
         <div>
-          <h2 className="text-3xl font-bold text-gray-100">Grading Results</h2>
+          <h2 className="text-3xl font-bold text-gray-100">{student.name + "'s Submission"}</h2>
           <p className="text-sm text-gray-400 mt-1 ml-1">
             Graded on: {new Date(gradingOutput.gradedAt).toLocaleString()}
           </p>
@@ -598,63 +598,7 @@ const GradingResults = ({ gradingOutput, viewMode = "student" }) => {
     </div>
   );
 };
-const SimpleStudentScroller = ({ students }) => {
-  const scrollContainerRef = useRef(null);
 
-  // This function scrolls the container left or right
-  const scroll = (scrollOffset) => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: scrollOffset, behavior: 'smooth' });
-    }
-  };
-
-  return (
-
-
-// Assuming 'Icon', 'students', and 'scroll' are defined elsewhere
-
-// --- Corrected Component Layout ---
-<>
-
-<div className="flex items-center w-full max-w-4xl my-3 mx-auto">
-
-  {/* Left Arrow Button */}
-  <Button isIconOnly onClick={() => scroll(-300)} className="bg-transparent">
-    <Icon icon={"lucide-chevron-left"} className="text-xl" />
-  </Button>
-
-  {/* Stretchy Middle Section */}
-  <div className="flex-1 min-w-0"> {/* This is the key fix */}
-    <ScrollShadow
-      ref={scrollContainerRef}
-      orientation="horizontal"
-      
-      className="custom-scrollbar" 
-    >
-      {/* The ref on this div was removed */}
-      <div className="flex gap-4 p-2">
-        {students.map((student, index) => (
-          <Button variant="flat" key={index} className="flex-shrink-0 rounded-full">
-            {student}
-          </Button>
-        ))}
-      </div>
-    </ScrollShadow>
-  </div>
-
-  {/* Right Arrow Button */}
-  <Button isIconOnly onClick={() => scroll(300)} className="bg-transparent">
-    <Icon icon={"lucide-chevron-right"} className="text-xl" />
-  </Button>
-
- 
-</div>
-<Divider></Divider>
-</>
-  );
-};
-
-export default SimpleStudentScroller;
 
 // --- Example Usage Wrapper ---
 export const Results = () => {
@@ -752,16 +696,98 @@ export const Results = () => {
   };
 
   const [currentView, setCurrentView] = useState("teacher");
+  const getColor = (status) => {
+    if (status == null) {
+      return "danger";
+    }
+    switch (status) {  // need to hook this up based on the student_assignments table
+      case "graded":
+        return "success";
+      case "ungraded":
+        return "default";
+      case "current":
+        return "secondary"
+    }}
 const students = [
-    'Emma Johnson', 'Liam Smith', 'Olivia Davis', 'Noah Wilson', 'Ava Brown',
-    'William Jones', 'Sophia Garcia', 'James Miller', 'Isabella Rodriguez', 
-    'Benjamin Martinez', 'Charlotte Anderson', 'Lucas Taylor', 'Amelia Thomas',
-    'Mason Jackson', 'Harper White', 'Ethan Lee', 'Mia Clark', 'Alexander Lewis'
+    { name: 'Emma Johnson', status: 'graded' },
+    { name: 'Liam Smith', status: 'ungraded' },
+    { name: 'Olivia Davis', status: 'ungraded' },
+    { name: 'Noah Wilson', status: 'graded' },
+    { name: 'Ava Brown', status: 'graded' },
+    { name: 'William Jones', status: 'ungraded' },
+    { name: 'Sophia Garcia', status: 'graded' },
+    { name: 'James Miller', status: 'graded' },
+    { name: 'Isabella Rodriguez', status: null },
+    { name: 'Benjamin Martinez', status: 'graded' },
+    { name: 'Charlotte Anderson', status: 'ungraded' },
+    { name: 'Lucas Taylor', status: 'graded' },
+    { name: 'Amelia Thomas', status: null },
+    { name: 'Mason Jackson', status: 'graded' },
+    { name: 'Harper White', status: 'ungraded' },
+    { name: 'Ethan Lee', status: 'graded' },
+    { name: 'Mia Clark', status: null },
+    { name: 'Alexander Lewis', status: 'ungraded' }
   ];
+       const scrollContainerRef = useRef(null);
+  // This function scrolls the container left or right
+  const scroll = (scrollOffset) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: scrollOffset, behavior: 'smooth' });
+    }
+  };
+  const [selected, setSelected ] = useState(students[2]);
+ 
   return (
     <div className=" ">
-        <SimpleStudentScroller students={students}/>
+  
+
+<>
+{/* <div className="flex w-full justify-end flex-shrink-0 pt-2 pr-3 z-3 absolute">
+  <Tooltip content={"Graded " + 8 +" of "+ students?.length +". z students did not submit the assignment." } >
+    <Icon icon="lucide-info" className="cursor-pointer "/>
+  </Tooltip>
+  
+</div> */}
+<div className="flex items-center w-full max-w-4xl p-3 px-0 mx-auto">
+
+  {/* Left Arrow Button */}
+  <Button isIconOnly onClick={() => scroll(-300)} className="bg-transparent">
+    <Icon icon={"lucide-chevron-left"} className="text-xl" />
+  </Button>
+
+  {/* Stretchy Middle Section */}
+  <div className="flex-1 min-w-0"> {/* This is the key fix */}
+    <ScrollShadow
+      ref={scrollContainerRef}
+      orientation="horizontal"
+      
+      className="custom-scrollbar" 
+    >
+      {/* The ref on this div was removed */}
+      <div className="flex gap-4 p-2">
+        {students.map((student, index) => (
+          <Button onPress={() => setSelected(student)} variant={selected.name === student.name ?"solid" : 'ghost'} color={getColor(student.status)} key={index} className="flex-shrink-0 border-2 rounded-full">
+            {student.name}
+          </Button>
+        ))}
+      </div>
+    </ScrollShadow>
+  </div>
+
+  {/* Right Arrow Button */}
+  <Button isIconOnly onClick={() => scroll(300)} className="bg-transparent">
+    <Icon icon={"lucide-chevron-right"} className="text-xl" />
+  </Button>
+
+ 
+</div>
+<div>
+  <p className="text-sm text-gray-400 text-center w-full">Graded (9) of 18 students. 8 Did not submit.</p>
+</div>
+<Divider></Divider>
+</>
       <GradingResults className="pb-10"
+        student = {selected}
         gradingOutput={sampleGradingOutput}
         viewMode={currentView}
       />
