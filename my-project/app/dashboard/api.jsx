@@ -2,6 +2,7 @@
 
 import { supabase } from ".././supabase-client";
 import { useToast } from "@heroui/react";
+import { createClient } from "../../utils/supabase/server";
 
 export const insertUserIfNew = async (role) => {
   const {
@@ -70,6 +71,35 @@ export async function fetchStudentsForClass(classId) {
 export async function fetchStudentsForAssignment(assignmentId) {
   console.log("Fetching students for assignment:", assignmentId);
     const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("assignment_students")
+      .select("*")
+      .eq("assignment_id", assignmentId);
+  
+    console.log("Students fetched:"+ data)
+    if (error) {
+      console.error("Error fetching assignment students:", error);
+      return [];
+    }
+    return data;
+}
+
+export async function updateStudentGrading(studentId, assignmentId, gradingData) {
+  console.log("Updating grading for student:", studentId, "assignment:", assignmentId, "data:", gradingData);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("assignment_students")
+    .update(gradingData)
+    .eq("student_id", studentId)
+    .eq("assignment_id", assignmentId);
+
+  if (error) {
+    console.error("Error updating grading:", error);
+  } else {
+    console.log("Grading updated successfully");
+  }
+
   
 }
 
