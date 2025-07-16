@@ -9,7 +9,7 @@ import {
   Play, RotateCcw, Settings, ChevronRight, GripVertical, CloudUpload, Save,
 } from "lucide-react";
 import {
-  Button, Tabs, Tab, Select, SelectItem, Card, CardBody, CardHeader, Tooltip,
+  Button,ScrollShadow, Tabs, Tab, Select, SelectItem, Card, CardBody, CardHeader, Tooltip,
   Spinner, Skeleton, addToast, code,
 } from "@heroui/react";
 import {
@@ -22,17 +22,86 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_API_KEY
 );
 
+function AutograderAccordion(student) {
+  const [open, setOpen] = useState(false);
+  const editorRef = useRef(null);
+
+  const testCases = [
+    {
+      name: "Test with positive numbers",
+      status: "pass",
+      error: null,
+    },
+    {
+      name: "Test with zero",
+      status: "fail",
+      error: null,
+    },
+    {
+      name: "Test with user object",
+      status: "fail",
+      error: null,
+    },
+    {
+      name: "Test with large numbers",
+      status: "warn",
+      error: "NullPointerException at Solution.java:15",
+    },
+  ];
+
+  return (
+    <div className="bg-zinc-900/70 border-b border-white/10">
+      {/* Accordion Header */}
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex justify-between items-center px-6 py-3 text-white font-semibold hover:bg-white/10 transition"
+      >
+        <span>Autograder Results</span>
+        <span className="text-white/50">{open ? "▲" : "▼"}</span>
+      </button>
+      {/* Accordion Content */}
+      {open && (
+        <>
+        <div className="bg-gray-800 px-3 py-1 flex items-center space-x-2">
+        <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+        <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>
+        <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+      </div>
+
+      <div className="flex-1 bg-black text-green-400 font-mono p-4 overflow-y-auto">
+        <pre>
+          <code>
+            {`$ javac Student.java
+  $ java Student
+  Hello, ${student.name}!
+  Autograder running...
+  Test 1: ✅ Passed
+  Test 2: ✅ Passed
+  Test 3: ❌ Failed
+  `}
+          </code>
+        </pre>
+      </div>
+      <div className="bg-gray-800 px-3 py-1 flex items-center space-x-2"><p>AutoGrader Score: 50/100 marks</p></div>
+        </>
+      )}
+      
+    </div>
+  );
+}
+
+
 export default function AssignmentDetailPage() {
   const { id } = useParams();
   const [output, setOutput] = useState(null);
   const [activeTab, setActiveTab] = useState("results");
-  const [consoleTab, setConsoleTab] = useState("testcases");
   const [time, setTime] = useState("-");
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assignment, setAssignment] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState();
-  const [leftWidth, setLeftWidth] = useState(25); // percentage
+  const [leftWidth, setLeftWidth] = useState(55); // percentage
   const [topHeight, setTopHeight] = useState(65);
   const [isLoading, setIsLoading] = useState(true);
   const [timeUp, setTimeUp] = useState(false);
@@ -205,7 +274,6 @@ export default function AssignmentDetailPage() {
             )}
 
             {activeTab === "results" && (
-              <div className="flex flex-col w-full h-full p-6 overflow-hidden">
                 <div className="w-full h-full bg-zinc-900/80 rounded-lg border border-white/10 flex flex-col overflow-hidden">
                   {/* Header */}
                   <div className="py-3 px-4 bg-zinc-800 border-b border-white/10 text-white font-semibold flex justify-between items-center">
@@ -222,6 +290,7 @@ export default function AssignmentDetailPage() {
                           ← Back to Student List
                         </button>
                       </>
+                    
                     ) : (
                       <>
                         <span>Students</span>
@@ -254,117 +323,12 @@ export default function AssignmentDetailPage() {
                       <div className="space-y-8 text-white">
                         {/* Feedback + Rubric */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block mb-2 font-semibold">Feedback</label>
-                            <textarea
-                              rows={4}
-                              className="w-full bg-zinc-800 border border-white/20 rounded-lg px-4 py-2 text-white resize-none"
-                              placeholder="Write constructive feedback..."
-                            />
-                          </div>
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                              <label className="font-semibold">Rubric</label>
-                              <button className="bg-zinc-700 text-white text-sm px-3 py-1 rounded hover:bg-zinc-600">
-                                Manage Rubric
-                              </button>
-                            </div>
-                            <button className="bg-zinc-700 text-white text-sm px-3 py-1 rounded hover:bg-zinc-600">
-                              View Raw Logs
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Test Cases */}
-                        <div>
-                          <h3 className="text-white font-semibold mb-4">🧪 Test Cases</h3>
-                          <div className="space-y-4">
-                            {[
-                              {
-                                name: "Test with positive numbers",
-                                status: "pass",
-                                score: 8,
-                              },
-                              {
-                                name: "Test with zero",
-                                status: "fail",
-                                score: 0,
-                              },
-                              {
-                                name: "Test with user object",
-                                status: "fail",
-                                score: 0,
-                              },
-                              {
-                                name: "Test with large numbers",
-                                status: "warn",
-                                score: 0,
-                                error: "NullPointerException at Solution.java:15",
-                              },
-                            ].map((test, index) => (
-                              <div
-                                key={index}
-                                className="bg-zinc-800 rounded-lg px-4 py-3 flex justify-between items-start gap-4 border border-white/10"
-                              >
-                                <div>
-                                  <div className="flex items-center gap-2 font-medium">
-                                    {test.status === "pass" && <span>✅</span>}
-                                    {test.status === "fail" && <span>❌</span>}
-                                    {test.status === "warn" && <span>⚠️</span>}
-                                    {test.name}
-                                  </div>
-                                  {test.error && (
-                                    <pre className="mt-2 bg-red-900 text-red-300 text-xs px-3 py-2 rounded-lg whitespace-pre-wrap">
-                                      {test.error}
-                                    </pre>
-                                  )}
-                                </div>
-                                <input
-                                  type="number"
-                                  defaultValue={test.score}
-                                  className="w-16 bg-zinc-700 border border-white/20 text-white rounded-lg px-2 py-1 text-sm"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Requirements */}
-                        <div>
-                          <h3 className="text-white font-semibold mb-4">📋 Requirements</h3>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center bg-zinc-800 px-4 py-3 rounded-lg border border-white/10">
-                              <span>✅ Function 'calculateTotal' is implemented</span>
-                              <input
-                                type="number"
-                                defaultValue={10}
-                                className="w-16 bg-zinc-700 border border-white/20 text-white rounded-lg px-2 py-1 text-sm"
-                              />
-                            </div>
-                            <div className="flex justify-between items-center bg-zinc-800 px-4 py-3 rounded-lg border border-white/10">
-                              <span>❌ Handles array input</span>
-                              <input
-                                type="number"
-                                defaultValue={0}
-                                className="w-16 bg-zinc-700 border border-white/20 text-white rounded-lg px-2 py-1 text-sm"
-                              />
-                            </div>
-                          </div>
+                          
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Action Bar (bottom) */}
-                  {selectedStudent && (
-                    <div className="p-6 border-t border-white/10 bg-zinc-900 flex justify-end gap-3">
-                      <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold">
-                        Save Feedback
-                      </button>
-                    </div>
-                  )}
                 </div>
-              </div>
             )}
 
           </div>
@@ -384,19 +348,24 @@ export default function AssignmentDetailPage() {
             className="backdrop-blur-sm rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden right-panel bg-zinc-800/50"
             style={{ width: `${100 - leftWidth - 1}%` }}
           >
-            {/* Editor Header */}
-            <CardHeader className="flex items-center justify-between py-2 px-6 border-b border-white/10 bg-black/20 rounded-t-2xl h-14">
-              <div className="text-white">{selectedStudent.name}'s Code</div>
-            </CardHeader>
+            {/* Accordion for Autograder Results */}
+            <AutograderAccordion student={selectedStudent} />
 
+            {/* Code Editor Section */}
             <div style={{ height: `${topHeight}%` }} className="flex flex-col">
+              <CardHeader className="flex items-center justify-between py-2 px-6 border-b border-white/10 bg-black/20 rounded-t-2xl h-14">
+                <div className="text-white font-semibold">
+                  {selectedStudent.name}'s Code
+                </div>
+              </CardHeader>
+
               <div className="flex-1 bg-black/30 pt-2">
                 <CodeEditor
                   language="java"
                   editorRef={editorRef}
                   role="student"
-                  disableMenu={true}
-                  starterCode={`// Sample code from ${selectedStudent.name}`}
+                  disableMenu={false}
+                  starterCode={`// Student code for ${selectedStudent.name}`}
                   isDisabled={false}
                 />
               </div>
@@ -407,14 +376,11 @@ export default function AssignmentDetailPage() {
               className="h-1.5 bg-white/10 hover:bg-blue-400/50 cursor-row-resize transition-colors duration-200 flex items-center justify-center group"
               onMouseDown={handleMouseDown("horizontal")}
             >
-              <div className="w-8 h-0.5 bg-white/30 group-hover:bg-blue-400/70 rounded-full transition-colors"></div>
+              <div className="w-8 h-0.5 bg-white/30 group-hover:bg-blue-400/70 rounded-full"></div>
             </div>
 
-            {/* Console Output */}
-            <div
-              style={{ height: `${100 - topHeight}%` }}
-              className="flex flex-col"
-            >
+            {/* Console Section */}
+            <div style={{ height: `${100 - topHeight}%` }} className="flex flex-col">
               <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
                 <div className="text-gray-200 text-lg">
                   {output != null ? (
