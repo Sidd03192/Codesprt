@@ -72,8 +72,8 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   const [selectedLanguage, setSelectedLanguage] = useState();
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [leftWidth, setLeftWidth] = useState(45); // percentage
-  const [topHeight, setTopHeight] = useState(65); // percentage of right panel
+  const [leftWidth, setLeftWidth] = useState(45);
+  const [topHeight, setTopHeight] = useState(65);
   const [time, setTime] = useState("-");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +86,6 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   const [assignmentData, setAssignmentData] = useState(null);
 
   useEffect(() => {
-    // update due date.
     if (assignmentData?.due_at) {
       setDueDate(new Date(assignmentData?.due_at));
       console.log("Due date:", assignmentData?.due_at);
@@ -145,12 +144,42 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
     }
   }, []);
 
-  const handleFileChange = (event) => {
-    const files = event.target.files;
-    if (files.length > 0) {
-      console.log("Selected files:", files);
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    const reader = new FileReader();
+  
+    if (!file.name.endsWith(".zip")) {
+      reader.onload = (e) => {
+        editorRef.current?.setValue(e.target.result);
+      };
+      reader.readAsText(file);
+    } else {
+      const zip = new JSZip();
+      reader.onload = async (e) => {
+        try {
+          const zipContent = await zip.loadAsync(e.target.result);
+          const firstCodeFile = Object.keys(zipContent.files).find((filename) =>
+            /\.(java|py|txt|js|cpp)$/i.test(filename)
+          );
+  
+          if (!firstCodeFile) {
+            alert("No code file found in the ZIP.");
+            return;
+          }
+  
+          const code = await zipContent.files[firstCodeFile].async("text");
+          editorRef.current?.setValue(code);
+        } catch (err) {
+          console.error("Error reading ZIP:", err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
     }
+    event.target.value = null;
   };
+  
 
   const saveAssignmentData = async (isSubmit) => {
     if (isPreview) {
@@ -629,6 +658,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
             </CardHeader>
 
             {/* Code Editor */}
+            
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Spinner />
@@ -693,17 +723,13 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                 ))}
               </Tabs>
             </div>
-
             {/* Console Content */}
-            <div className="flex-1 p-6 bg-black/20 overflow-y-auto custom-scrollbar">
-              <div className=" text-gray-200 text-lg">
-                {output != null ? (
-                  <div>Output: {output}</div>
-                ) : (
-                  'Click "Run Code" to see output here...'
-                )}
-              </div>
-            </div>
+            {output && (
+                <div className=" h-[230px] mt-4 p-4 bg-black text-white rounded-lg">
+                  <h3 className="flex text-sm text-zinc-400 mb-2">Output:</h3>
+                  <p className="whitespace-pre-wrap text-white"> ~ % {output}</p>
+                </div>
+              )}
           </div>
 
           {/* Action Bar */}
@@ -754,14 +780,6 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                 Submit
               </Button>
 
-              <input
-                type="file"
-                id="fileInput"
-                className="hidden"
-                accept=".js,.jsx,.ts,.tsx,.py,.java,.cpp,.c,.cs,.rb,.php,.go,.rs,.kt,.swift,.html,.css,.json,.zip"
-                multiple
-                onChange={handleFileChange}
-              />
               <Button
                 color="success"
                 variant="flat"
@@ -769,6 +787,14 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
               >
                 Upload Code or ZIP
               </Button>
+
+              <input
+                type="file"
+                id="fileInput"
+                style={{ display: "none" }}
+                accept=".java,.py,.txt,.js,.cpp,.jsx,.zip"
+                onChange={handleFileUpload}
+              />
 
               <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
                 <ModalContent>
