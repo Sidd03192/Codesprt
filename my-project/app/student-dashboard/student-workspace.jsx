@@ -145,6 +145,13 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
     }
   }, []);
 
+  const handleFileChange = (event) => {
+    const files = event.target.files;
+    if (files.length > 0) {
+      console.log("Selected files:", files);
+    }
+  };
+
   const saveAssignmentData = async (isSubmit) => {
     if (isPreview) {
       console.warn("Preview mode, skipping save/submit.");
@@ -747,6 +754,22 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                 Submit
               </Button>
 
+              <input
+                type="file"
+                id="fileInput"
+                className="hidden"
+                accept=".js,.jsx,.ts,.tsx,.py,.java,.cpp,.c,.cs,.rb,.php,.go,.rs,.kt,.swift,.html,.css,.json,.zip"
+                multiple
+                onChange={handleFileChange}
+              />
+              <Button
+                color="success"
+                variant="flat"
+                onPress={() => document.getElementById("fileInput").click()}
+              >
+                Upload Code or ZIP
+              </Button>
+
               <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
                 <ModalContent>
                   {(onClose) => (
@@ -783,6 +806,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                         >
                           Submit
                         </Button>
+
                       </ModalFooter>
                     </>
                   )}
