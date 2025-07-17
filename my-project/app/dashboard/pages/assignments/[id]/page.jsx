@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from 'next/navigation';
 import { createClient } from "@supabase/supabase-js";
 import { Icon } from "@iconify/react";
+import { useRouter } from "next/navigation";
 import CodeEditor from "../../../../components/editor/code-editor";
 import {
   Play, RotateCcw, Settings, ChevronRight, GripVertical, CloudUpload, Save,
@@ -73,13 +74,13 @@ function AutograderAccordion(student) {
         <pre>
           <code>
             {`$ javac Student.java
-  $ java Student
-  Hello, ${student.name}!
-  Autograder running...
-  Test 1: ✅ Passed
-  Test 2: ✅ Passed
-  Test 3: ❌ Failed
-  `}
+              $ java Student
+              Hello, ${student.name}!
+              Autograder running...
+              Test 1: ✅ Passed
+              Test 2: ✅ Passed
+              Test 3: ❌ Failed
+            `}
           </code>
         </pre>
       </div>
@@ -95,6 +96,7 @@ function AutograderAccordion(student) {
 export default function AssignmentDetailPage() {
   const { id } = useParams();
   const [output, setOutput] = useState(null);
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("results");
   const [time, setTime] = useState("-");
   const [isRunning, setIsRunning] = useState(false);
@@ -112,6 +114,9 @@ export default function AssignmentDetailPage() {
   const editorRef = useRef(null);
   const isDragging = useRef(false);
   const dragType = useRef(null);
+  const [pointsOpen, setPointsOpen] = useState(true);
+  const [gradingPoints, setGradingPoints] = useState([
+  { id: 1, score: 4.0, comment: "Followed coding style guidelines" },]);
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const students = [
@@ -173,6 +178,21 @@ export default function AssignmentDetailPage() {
     }
     fetchAssignment();
   }, [id]);
+
+  const addPoint = () => {
+    setGradingPoints([
+      ...gradingPoints,
+      { id: gradingPoints.length + 1, score: 0, comment: "" },
+    ]);
+  };
+  
+  const updatePoint = (id, field, value) => {
+    setGradingPoints(
+      gradingPoints.map((p) =>
+        p.id === id ? { ...p, [field]: value } : p
+      )
+    );
+  };
 
   const runCode = async () => {
     const code = editorRef.current?.getValue?.();
@@ -258,14 +278,35 @@ export default function AssignmentDetailPage() {
                 className="font-medium"
               >
                 <Tab key="results" title="Results & Submissions" />
+                <Tab key="rubric" title="Rubric" />'
                 <Tab key="Description" title="Description" />
               </Tabs>
+              <div className="ml-auto">
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard")}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+                >
+                  ← Back
+                </button>
+              </div>
             </CardHeader>
 
             {activeTab === "Description" && (
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <h1 className="text-3xl font-bold text-white">
                   {assignmentData?.title || "Assignment Title"}
+                </h1>
+                <div className="space-y-4 mt-6">
+                  <div dangerouslySetInnerHTML={{ __html: assignmentData?.description || "" }} />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "rubric" && (
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <h1 className="text-3xl font-bold text-white">
+                  {assignmentData?.title || "Rubric"}
                 </h1>
                 <div className="space-y-4 mt-6">
                   <div dangerouslySetInnerHTML={{ __html: assignmentData?.description || "" }} />
@@ -318,19 +359,92 @@ export default function AssignmentDetailPage() {
                           </div>
                         ))}
                       </div>
+                      
                     ) : (
                       // Grading UI
-                      <div className="space-y-8 text-white">
-                        {/* Feedback + Rubric */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          
+                      <div className="space-y-6">
+                        {/* ✅ Collapsible Points Section */}
+                        <div className="bg-zinc-800 rounded-lg border border-white/10 overflow-hidden">
+                          {/* Header */}
+                          <button
+                            type="button"
+                            onClick={() => setPointsOpen(!pointsOpen)}
+                            className="w-full flex justify-between items-center px-4 py-3 text-white font-semibold hover:bg-white/10 transition"
+                          >
+                            <span>Grading Points</span>
+                            <span className="text-white/50">{pointsOpen ? "▲" : "▼"}</span>
+                          </button>
+
+                          {pointsOpen && (
+                            <div className="p-4 space-y-4">
+                              {gradingPoints.map((point, index) => (
+                                <div
+                                  key={point.id}
+                                  className="flex items-start gap-4 bg-zinc-900 px-4 py-3 rounded-lg border border-white/10"
+                                >
+                                  {/* Numbered Box */}
+                                  <div className="w-8 h-8 flex items-center justify-center rounded bg-zinc-700 text-white font-bold">
+                                    {index + 1}
+                                  </div>
+
+                                  {/* Score & Comment */}
+                                  <div className="flex-1">
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={point.score}
+                                      onChange={(e) =>
+                                        updatePoint(point.id, "score", parseFloat(e.target.value))
+                                      }
+                                      className="text-green-400 bg-transparent text-sm font-semibold focus:outline-none w-16"
+                                      placeholder="+0.0"
+                                    />
+                                    <textarea
+                                      value={point.comment}
+                                      onChange={(e) =>
+                                        updatePoint(point.id, "comment", e.target.value)
+                                      }
+                                      className="block w-full mt-1 bg-zinc-800 border border-white/20 rounded-lg px-3 py-1 text-white text-sm resize-none"
+                                      placeholder="Enter comment..."
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Add Point Button */}
+                              <button
+                                type="button"
+                                onClick={addPoint}
+                                className="text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg"
+                              >
+                                + Add Point
+                              </button>
+                            </div>
+                          )}
                         </div>
+
+                        {/* ✅ Feedback (remains below points) */}
+                        <div>
+                          <label className="block mb-2 text-white font-semibold">
+                            Feedback
+                          </label>
+                          <textarea
+                            rows={4}
+                            className="w-full bg-zinc-800 border border-white/20 rounded-lg px-4 py-2 text-white resize-none"
+                            placeholder="Write constructive feedback here..."
+                          />
+                        </div>
+                        <Button
+                                className="text-md bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg"
+                              >
+                          Save Feedback
+                        </Button>
                       </div>
+
                     )}
                   </div>
                 </div>
             )}
-
           </div>
         </Card>
 
@@ -392,98 +506,97 @@ export default function AssignmentDetailPage() {
               </div>
             </div>
             {/* Action Bar */}
-<div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
-  <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
-    ⏱️ {time}
-  </div>
-  <div className="flex items-center gap-4 ">
-    <Button
-      onPress={runCode}
-      isDisabled={isRunning}
-      startContent={
-        (isRunning && <Spinner color="secondary" size="sm" />) || (
-          <Play size={16} />
-        )
-      }
-      color="secondary"
-      variant="flat"
-    >
-      Run
-    </Button>
-    <Button
-      color="primary"
-      variant="flat"
-      onPress={() => saveAssignmentData(false)}
-      isDisabled={isSubmitting || saving || timeUp}
-      startContent={
-        saving ? (
-          <Spinner size="sm" color="primary" />
-        ) : (
-          <Save size={16} />
-        )
-      }
-    >
-      Save
-    </Button>
-    <Button
-      onPress={onOpen}
-      isDisabled={isSubmitting || timeUp}
-      startContent={
-        (isSubmitting && <Spinner color="success" size="sm" />) || (
-          <CloudUpload size={16} />
-        )
-      }
-      color="success"
-      variant="flat"
-    >
-      Submit
-    </Button>
+            <div className="flex items-center justify-between px-6 py-4 bg-black/30 border-t border-white/10 rounded-b-2xl">
+              <div className="text-sm text-gray-400 bg-gray-800/40 px-4 py-2 rounded-lg border border-gray-700/30">
+                ⏱️ {time}
+              </div>
+              <div className="flex items-center gap-4 ">
+                <Button
+                  onPress={runCode}
+                  isDisabled={isRunning}
+                  startContent={
+                    (isRunning && <Spinner color="secondary" size="sm" />) || (
+                      <Play size={16} />
+                    )
+                  }
+                  color="secondary"
+                  variant="flat"
+                >
+                  Run
+                </Button>
+                <Button
+                  color="primary"
+                  variant="flat"
+                  onPress={() => saveAssignmentData(false)}
+                  isDisabled={isSubmitting || saving || timeUp}
+                  startContent={
+                    saving ? (
+                      <Spinner size="sm" color="primary" />
+                    ) : (
+                      <Save size={16} />
+                    )
+                  }
+                >
+                  Save
+                </Button>
+                <Button
+                  onPress={onOpen}
+                  isDisabled={isSubmitting || timeUp}
+                  startContent={
+                    (isSubmitting && <Spinner color="success" size="sm" />) || (
+                      <CloudUpload size={16} />
+                    )
+                  }
+                  color="success"
+                  variant="flat"
+                >
+                  Submit
+                </Button>
 
-    {/* Submission Confirmation Modal */}
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent>
-        {(onClose) => (
-          <>
-            <ModalHeader className="flex flex-col gap-1">
-              Submit Assignment
-            </ModalHeader>
-            <ModalBody>
-              <Card className="border-spacing-3 border-large border-yellow-400 p-5 bg-zinc-850">
-                <p className="text-yellow-500">
-                  Are you sure you want to submit this assignment?
-                  This action cannot be undone.
-                </p>
-              </Card>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                color="danger"
-                variant="light"
-                onPress={onClose}
-              >
-                Close
-              </Button>
-              <Button
-                onPress={() => saveAssignmentData(true)}
-                disabled={isSubmitting}
-                startContent={
-                  (isSubmitting && (
-                    <Spinner color="success" size="sm" />
-                  )) || <CloudUpload size={16} />
-                }
-                color="success"
-                variant="flat"
-              >
-                Submit
-              </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
-  </div>
-</div>
-
+                {/* Submission Confirmation Modal */}
+                <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+                  <ModalContent>
+                    {(onClose) => (
+                      <>
+                        <ModalHeader className="flex flex-col gap-1">
+                          Submit Assignment
+                        </ModalHeader>
+                        <ModalBody>
+                          <Card className="border-spacing-3 border-large border-yellow-400 p-5 bg-zinc-850">
+                            <p className="text-yellow-500">
+                              Are you sure you want to submit this assignment?
+                              This action cannot be undone.
+                            </p>
+                          </Card>
+                        </ModalBody>
+                        <ModalFooter>
+                          <Button
+                            color="danger"
+                            variant="light"
+                            onPress={onClose}
+                          >
+                            Close
+                          </Button>
+                          <Button
+                            onPress={() => saveAssignmentData(true)}
+                            disabled={isSubmitting}
+                            startContent={
+                              (isSubmitting && (
+                                <Spinner color="success" size="sm" />
+                              )) || <CloudUpload size={16} />
+                            }
+                            color="success"
+                            variant="flat"
+                          >
+                            Submit
+                          </Button>
+                        </ModalFooter>
+                      </>
+                    )}
+                  </ModalContent>
+                </Modal>
+              </div>
+            </div>
           </Card>
         )}
 
