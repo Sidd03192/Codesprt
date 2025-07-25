@@ -5,65 +5,18 @@ import {
   Button,
   Divider,
   ScrollShadow,
+  Spinner,
   Textarea,
   Tooltip,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { fetchStudentsForAssignment } from "../dashboard/api";
-import { ArrowRight, Save } from "lucide-react";
+import {
+  fetchStudentsForAssignment,
+  fetchTestcasesForAssignment,
+} from "../dashboard/api";
+import { ArrowRight, Save, ArrowLeft } from "lucide-react";
 import { Rubric } from "./assignment/rubric";
 // --- Helper Components & Icons ---
-
-const CheckIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 text-green-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 13l4 4L19 7"
-    />
-  </svg>
-);
-
-const XIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 text-red-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
-
-const ExclamationIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 text-yellow-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-    />
-  </svg>
-);
 
 const CodeBlock = ({ content, language = "text", className = "" }) => {
   const formatContent = (value) => {
@@ -80,40 +33,6 @@ const CodeBlock = ({ content, language = "text", className = "" }) => {
     >
       <code className={`language-javascript `}>{formatContent(content)}</code>
     </pre>
-  );
-};
-
-const Modal = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold ">{title}</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto">{children}</div>
-      </div>
-    </div>
   );
 };
 
@@ -173,13 +92,14 @@ const AccordionSection = ({
               title={
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {item.status === "passed" && (
-                      <Icon
-                        icon="lucide-check"
-                        color="green"
-                        className="text-xl"
-                      ></Icon>
-                    )}
+                    {item.status === "passed" &&
+                      item.pointsAchieved == item.maxPoints && (
+                        <Icon
+                          icon="lucide-check"
+                          color="green"
+                          className="text-xl"
+                        ></Icon>
+                      )}
                     {item.pointsAchieved > 0 &&
                       item.pointsAchieved < item.maxPoints && (
                         <Icon
@@ -205,6 +125,7 @@ const AccordionSection = ({
                       <div className="flex items-center gap-2 text-sm">
                         <input
                           type="number"
+                          max={item.maxPoints}
                           value={itemOverrides[index] ?? item.pointsAchieved}
                           onChange={(e) =>
                             onOverrideChange(index, e.target.value)
@@ -282,7 +203,13 @@ const AccordionSection = ({
   );
 };
 
-const GradingResults = ({ grading_data, viewMode, student }) => {
+const GradingResults = ({
+  grading_data,
+  viewMode,
+  student,
+  rubricData,
+  setCurrentView,
+}) => {
   const [feedback, setFeedback] = useState(grading_data.teacherFeedback || "");
 
   const [overallOverrideScore, setOverallOverrideScore] = useState(
@@ -297,6 +224,51 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
   const [stylingPointOverrides, setStylingPointOverrides] = useState({});
   const [reqPointOverrides, setReqPointOverrides] = useState({});
 
+  const stylingResults = useMemo(() => {
+    return (
+      rubricData?.stylingCriteria?.map((item) => ({
+        name: item.name,
+        maxPoints: item.maxPoints,
+        pointsAchieved: 0, // Default value
+        status: "ungraded",
+        message: "",
+        expected: "",
+        actual: "",
+      })) || []
+    );
+  }, [rubricData, grading_data.stylingResults]);
+
+  const requirementsResults = useMemo(() => {
+    return (
+      rubricData?.requirementsCriteria?.map((item) => ({
+        name: item.name,
+        maxPoints: item.maxPoints,
+        pointsAchieved: 0, // Default value
+        status: "ungraded",
+        message: "",
+        expected: "",
+        actual: "",
+      })) ||
+      grading_data.requirementsResults ||
+      []
+    );
+  }, [rubricData, grading_data.requirementsResults]);
+
+  const testResults = useMemo(() => {
+    if (!rubricData?.testCaseCriteria) {
+      return grading_data.testResults || [];
+    }
+    return (grading_data.testResults || []).map((result) => {
+      const rubricItem = rubricData.testCaseCriteria.find(
+        (item) => item.name === result.name
+      );
+      return {
+        ...result,
+        maxPoints: rubricItem ? Number(rubricItem.maxPoints) : result.maxPoints,
+      };
+    });
+  }, [grading_data.testResults, rubricData]);
+
   const calculatedTotalPoints = useMemo(() => {
     const sumPoints = (items, overrides) =>
       items.reduce((acc, item, index) => {
@@ -306,31 +278,26 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
         );
       }, 0);
 
-    const testPoints = sumPoints(grading_data.testResults, testPointOverrides);
-    const stylingPoints = sumPoints(
-      grading_data.stylingResults,
-      stylingPointOverrides
-    );
-    const reqPoints = sumPoints(
-      grading_data.requirementsResults,
-      reqPointOverrides
-    );
+    const testPoints = sumPoints(testResults, testPointOverrides);
+    const stylingPoints = sumPoints(stylingResults, stylingPointOverrides);
+    const reqPoints = sumPoints(requirementsResults, reqPointOverrides);
 
     return testPoints + stylingPoints + reqPoints;
   }, [
-    grading_data,
+    testResults,
+    stylingResults,
+    requirementsResults,
     testPointOverrides,
     stylingPointOverrides,
     reqPointOverrides,
   ]);
 
   const maxTotalPoints = useMemo(() => {
-    return [
-      ...grading_data.testResults,
-      ...grading_data.stylingResults,
-      ...grading_data.requirementsResults,
-    ].reduce((acc, item) => acc + item.maxPoints, 0);
-  }, [grading_data]);
+    return [...testResults, ...stylingResults, ...requirementsResults].reduce(
+      (acc, item) => acc + (item.maxPoints || 0),
+      0
+    );
+  }, [testResults, stylingResults, requirementsResults]);
 
   // --- MODIFICATION START ---
   const finalScore =
@@ -371,23 +338,6 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
     );
   };
 
-  const handleSaveFeedback = () => {
-    console.log("Saving feedback:", feedback);
-    alert("Feedback saved!");
-  };
-  const handleOverrideGrade = () => {
-    console.log("Overriding grade to:", overallOverrideScore);
-    alert(`Grade overridden to ${overallOverrideScore}!`);
-  };
-  const handleSaveRubric = () => {
-    console.log("Saving rubric:", rubricContent);
-    alert("Rubric saved!");
-    setIsRubricModalOpen(false);
-  };
-  const handleUploadRubric = () => {
-    alert("File upload simulation!");
-  };
-
   return (
     <div className="font-sans  mx-auto">
       {/* Header */}
@@ -407,6 +357,7 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
                 <div className="flex items-baseline ">
                   <input
                     type="number"
+                    max={maxTotalPoints}
                     value={overallOverrideScore}
                     onChange={(e) => setOverallOverrideScore(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
@@ -441,35 +392,24 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
         )}
 
         {viewMode === "teacher" && (
-          <div className="mb-8">
+          <div className="">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold mb-2 ">Teacher Controls</h3>
-              <Button
-                onClick={() => setIsRubricModalOpen(true)}
-                variant="flat"
-                color="secondary"
-                className="max-w-28"
-              >
-                Rubric
-              </Button>
             </div>
 
             <div className="">
               <div className=" ">
-                <label className="block text-md font-medium  mb-1">
-                  Feedback
-                </label>
+                <label className="block text-md font-medium  ">Feedback</label>
                 <Textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Provide feedback..."
                   variant="bordered"
                   size="lg"
-                  className="w-full p-8   rounded-lg p-3 min-h-32 text-xl"
+                  className="w-full p-4 ounded-lg  min-h-32 text-xl"
                 />
               </div>
             </div>
-            <Divider />
           </div>
         )}
 
@@ -495,11 +435,7 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
         {viewMode === "teacher" && (
           <div className="flex justify-between items-center  mb-4">
             <label className="block text-lg font-medium  mb-1">Testcases</label>
-            <Button
-              onClick={() => setIsLogsModalOpen(true)}
-              variant="flat"
-              color="primary"
-            >
+            <Button variant="flat" color="primary">
               View Raw Logs
             </Button>
           </div>
@@ -517,7 +453,7 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
         />
         <AccordionSection
           title="Styling"
-          items={grading_data.stylingResults}
+          items={stylingResults}
           itemOverrides={stylingPointOverrides}
           onOverrideChange={(index, value) =>
             setStylingPointOverrides((prev) => ({ ...prev, [index]: value }))
@@ -527,7 +463,7 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
         />
         <AccordionSection
           title="Requirements"
-          items={grading_data.requirementsResults}
+          items={requirementsResults}
           itemOverrides={reqPointOverrides}
           onOverrideChange={(index, value) =>
             setReqPointOverrides((prev) => ({ ...prev, [index]: value }))
@@ -535,36 +471,115 @@ const GradingResults = ({ grading_data, viewMode, student }) => {
           viewMode={viewMode}
           icon="list-check"
         />
-        <div className="flex justify-end gap-2">
-          <Button onClick={handleSaveFeedback} variant="flat" color="secondary">
-            Next
-            <ArrowRight size={16} />
-          </Button>
 
-          <Button onClick={handleSaveFeedback} variant="flat" color="primary">
-            <Save size={16} />
-            Save Session
+        <div className="flex items-center justify-between  py-5 mb-10">
+          <Button
+            variant="flat"
+            color="secondary"
+            onPress={() => setCurrentView("rubric")}
+          >
+            <ArrowLeft size={16} /> Rubric
           </Button>
+          <div className=" flex  gap-2">
+            <Button variant="flat" color="primary">
+              <Save size={16} />
+              Save Session
+            </Button>
+            <Button variant="flat" color="secondary">
+              Next
+              <ArrowRight size={16} />
+            </Button>
+          </div>
         </div>
       </div>
-
-      {/* Modals */}
-      <Modal
-        isOpen={isLogsModalOpen}
-        onClose={() => setIsLogsModalOpen(false)}
-        title="Raw Execution Logs"
-      ></Modal>
-      <Modal
-        isOpen={isRubricModalOpen}
-        onClose={() => setIsRubricModalOpen(false)}
-        title="Manage Rubric"
-      ></Modal>
     </div>
   );
 };
 
+const StudentScrollSection = ({ students, selected, setSelected }) => {
+  // This function scrolls the container left or right
+  const getColor = (status) => {
+    if (status == null) {
+      return "danger";
+    }
+    switch (
+      status // need to hook this up based on the student_assignments table
+    ) {
+      case "graded":
+        return "success";
+      case "ungraded":
+        return "default";
+      case "current":
+        return "secondary";
+    }
+  };
+  const scrollContainerRef = React.useRef(null);
+  const scroll = (scrollOffset) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: scrollOffset,
+        behavior: "smooth",
+      });
+    }
+  };
+  return (
+    <div className="  bg-inherit backdrop-blur-lg">
+      <div className="flex bg-inherit items-center w-full max-w-4xl p-3 pb-0 px-0 mx-auto">
+        {/* Left Arrow Button */}
+        <Button
+          isIconOnly
+          onClick={() => scroll(-300)}
+          className="bg-transparent"
+        >
+          <Icon icon={"lucide-chevron-left"} className="text-xl" />
+        </Button>
+
+        {/* Stretchy Middle Section */}
+        <div className="flex-1 min-w-0">
+          {" "}
+          {/* This is the key fix */}
+          <ScrollShadow
+            ref={scrollContainerRef}
+            orientation="horizontal"
+            className="custom-scrollbar"
+          >
+            {/* The ref on this div was removed */}
+            <div className="flex gap-4 p-2">
+              {students?.map((student, index) => (
+                <Button
+                  onPress={() => setSelected(student)}
+                  variant={selected?.name === student.name ? "solid" : "ghost"}
+                  color={getColor(student.status)}
+                  key={index}
+                  className="flex-shrink-0 border-2 rounded-full"
+                >
+                  {student.name}
+                </Button>
+              ))}
+            </div>
+          </ScrollShadow>
+        </div>
+
+        {/* Right Arrow Button */}
+        <Button
+          isIconOnly
+          onClick={() => scroll(300)}
+          className="bg-transparent"
+        >
+          <Icon icon={"lucide-chevron-right"} className="text-xl" />
+        </Button>
+      </div>
+      <div>
+        <p className="text-sm text-gray-400 text-center w-full">
+          Graded (9) of 18 students. 8 Did not submit.
+        </p>
+      </div>
+      <Divider></Divider>
+    </div>
+  );
+};
 // --- Example Usage Wrapper ---
-export const Results = () => {
+export const Results = ({ editorRef, role }) => {
   const samplegrading_data = {
     totalPointsAchieved: 23,
     gradeOverride: null,
@@ -576,7 +591,7 @@ export const Results = () => {
     error: null,
     testResults: [
       {
-        name: "Test with positive numbers",
+        name: "checkCarListCreation",
         status: "passed",
         message: "",
         expected: "5",
@@ -585,7 +600,7 @@ export const Results = () => {
         maxPoints: 8,
       },
       {
-        name: "Test with zero",
+        name: "testWithEmptyList",
         status: "failed",
         message: "AssertionError: expected: <0> but was: <1>",
         expected: "0",
@@ -594,22 +609,13 @@ export const Results = () => {
         maxPoints: 12,
       },
       {
-        name: "Test with user object",
+        name: "testWithNullInput",
         status: "failed",
         message: "AssertionError: property 'age' doesn't match.",
         expected: { name: "Alice", age: 30 },
         actual: { name: "Alice", age: 31 },
         pointsAchieved: 0,
         maxPoints: 10,
-      },
-      {
-        name: "Test with large numbers",
-        status: "errored",
-        message: "NullPointerException at Solution.java:15",
-        expected: "2000000000",
-        actual: null,
-        pointsAchieved: 0,
-        maxPoints: 5,
       },
     ],
     stylingResults: [
@@ -657,116 +663,97 @@ export const Results = () => {
     rubric:
       "### Grading Rubric\n\n- **Correctness (25 pts):** Based on automated test cases.\n- **Styling (10 pts):** Code is clean and follows style guidelines.\n- **Requirements (20 pts):** All functional requirements are met.",
   };
-  const grading_data = useState(samplegrading_data);
 
+  const [grading_data, setGrading_data] = useState(samplegrading_data);
   const [students, setStudents] = useState([]);
-  const scrollContainerRef = useRef(null);
+  const [testcases, setTestcases] = useState([]);
+  const [rubricData, setRubricData] = useState(null);
 
-  // This function scrolls the container left or right
-  const scroll = (scrollOffset) => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        left: scrollOffset,
-        behavior: "smooth",
-      });
-    }
-  };
-
+  // fetch data from db
   useEffect(() => {
-    const getStudents = async () => {
-      // Hardcoded for now, this should be passed in as a prop
+    // Define a single async function to fetch all necessary data.
+    const fetchInitialData = async () => {
+      // This should ideally be passed in as a prop or come from context.
       const assignmentId = 17;
-      const fetchedStudents = await fetchStudentsForAssignment(assignmentId);
-      console.log(fetchedStudents);
-      setStudents(fetchedStudents);
-      if (fetchedStudents.length > 0) {
-        setSelected(fetchedStudents[0]);
+      try {
+        const [fetchedStudents, fetchedTestcases] = await Promise.all([
+          fetchStudentsForAssignment(assignmentId),
+          fetchTestcasesForAssignment(assignmentId),
+        ]);
+        console.log("Fetched students:", fetchedStudents);
+        setStudents(fetchedStudents);
+        if (fetchedStudents.length > 0) {
+          setSelected(fetchedStudents[0]);
+        }
+        console.log("Fetched test cases:", fetchedTestcases);
+        setTestcases(fetchedTestcases[0].testcases);
+      } catch (error) {
+        // It's important to handle potential errors from your API calls.
+        console.error("Failed to fetch initial data:", error);
       }
     };
-    getStudents();
+
+    fetchInitialData();
   }, []);
 
-  const [currentView, setCurrentView] = useState("teacher");
-  const getColor = (status) => {
-    if (status == null) {
-      return "danger";
+  // edit testcases based on rubric
+  useEffect(() => {
+    if (rubricData?.testCaseCriteria) {
+      const newTestResults = grading_data.testResults.map((test) => {
+        const matchingRubricItem =
+          rubricData.testCaseCriteria.find((item) => item.name === test.name) ||
+          {};
+        const maxPoints = matchingRubricItem.maxPoints || 0;
+
+        return {
+          ...test,
+          maxPoints: maxPoints,
+          pointsAchieved:
+            test.status == "passed" ? maxPoints : test.pointsAchieved,
+        };
+      });
+      setGrading_data((prevGradingData) => ({
+        ...prevGradingData,
+        testResults: newTestResults,
+      }));
     }
-    switch (
-      status // need to hook this up based on the student_assignments table
-    ) {
-      case "graded":
-        return "success";
-      case "ungraded":
-        return "default";
-      case "current":
-        return "secondary";
-    }
-  };
+  }, [rubricData]);
+
+  const [currentView, setCurrentView] = useState("rubric");
+
   const [selected, setSelected] = useState(null);
 
   return (
-    <div className=" ">
-      <>
-        <div className="flex items-center w-full max-w-4xl p-3 px-0 mx-auto">
-          {/* Left Arrow Button */}
-          <Button
-            isIconOnly
-            onClick={() => scroll(-300)}
-            className="bg-transparent"
-          >
-            <Icon icon={"lucide-chevron-left"} className="text-xl" />
-          </Button>
-
-          {/* Stretchy Middle Section */}
-          <div className="flex-1 min-w-0">
-            {" "}
-            {/* This is the key fix */}
-            <ScrollShadow
-              ref={scrollContainerRef}
-              orientation="horizontal"
-              className="custom-scrollbar"
-            >
-              {/* The ref on this div was removed */}
-              <div className="flex gap-4 p-2">
-                {students?.map((student, index) => (
-                  <Button
-                    onPress={() => setSelected(student)}
-                    variant={
-                      selected?.name === student.name ? "solid" : "ghost"
-                    }
-                    color={getColor(student.status)}
-                    key={index}
-                    className="flex-shrink-0 border-2 rounded-full"
-                  >
-                    {student.name}
-                  </Button>
-                ))}
-              </div>
-            </ScrollShadow>
+    <div className=" pb-10 h-full overflow-auto  custom-scrollbar ">
+      {currentView === "grading" && (
+        <StudentScrollSection
+          students={students}
+          selected={selected}
+          setSelected={setSelected}
+        />
+      )}
+      {selected &&
+        currentView === "grading" &&
+        (rubricData ? (
+          <GradingResults
+            student={selected}
+            rubricData={rubricData}
+            grading_data={grading_data} // get data from
+            viewMode="teacher"
+            setCurrentView={setCurrentView}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <Spinner color="secondary" variant="waves" />
           </div>
-
-          {/* Right Arrow Button */}
-          <Button
-            isIconOnly
-            onClick={() => scroll(300)}
-            className="bg-transparent"
-          >
-            <Icon icon={"lucide-chevron-right"} className="text-xl" />
-          </Button>
-        </div>
-        <div>
-          <p className="text-sm text-gray-400 text-center w-full">
-            Graded (9) of 18 students. 8 Did not submit.
-          </p>
-        </div>
-        <Divider></Divider>
-      </>
-      {/* {selected && <GradingResults className="pb-10"
-        student = {selected}
-        grading_data={samplegrading_data} // get data from
-        viewMode={currentView}
-      />} */}
-      <Rubric />
+        ))}
+      {selected && currentView === "rubric" && (
+        <Rubric
+          testcases={testcases}
+          setRubricData={setRubricData}
+          setDisplayNext={setCurrentView}
+        />
+      )}
     </div>
   );
 };

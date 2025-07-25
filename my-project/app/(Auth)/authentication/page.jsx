@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 
 import { supabase } from "../../supabase-client";
+import { createClient } from "../../../utils/supabase/client";
 import React, { useState } from "react";
 import {
   Button,
@@ -41,6 +42,7 @@ export default function AuthForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const supabase = createClient();
 
     try {
       if (isSignUp) {
@@ -116,12 +118,10 @@ export default function AuthForm() {
   };
 
   const signInWithGoogle = async () => {
+    const supabase = createClient();
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
       });
 
       if (error) {

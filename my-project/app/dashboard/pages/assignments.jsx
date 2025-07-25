@@ -20,7 +20,7 @@ import { executeCode } from "../../components/editor/api";
 import CreateAssignmentPage from "../../components/assignment/create-assignment";
 import EditAssignmentPage from "../../components/assignment/edit-assignment";
 import { createClient } from "@supabase/supabase-js";
-
+import Link from "next/link";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_API_KEY
@@ -32,7 +32,6 @@ export const Assignments = ({ session, classes }) => {
   const [searchValue, setSearchValue] = useState("");
   const [open, setOpen] = useState(false);
   const [viewSubmissionsOpen, setViewSubmissionsOpen] = useState(false);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
   const [submissions, setSubmissions] = useState([
     {
       id: "1",
@@ -135,21 +134,6 @@ export const Assignments = ({ session, classes }) => {
       supabase.removeChannel(subscription);
     };
   }, []);
-
-  useEffect(() => {
-    const fetchSubmissions = async () => {
-      if (!selectedAssignmentId) return;
-      const { data, error } = await supabase
-        .from("submissions")
-        .select("*")
-        .eq("assignment_id", selectedAssignmentId);
-      if (!error) setSubmissions(data);
-    };
-
-    if (viewSubmissionsOpen) {
-      fetchSubmissions();
-    }
-  }, [viewSubmissionsOpen, selectedAssignmentId]);
 
   const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -342,13 +326,11 @@ export const Assignments = ({ session, classes }) => {
                         <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
                           {status.toLowerCase() !== "draft" && (
                             <Button
+                              as={Link}
+                              href={`/dashboard/grade-assignment/${assignment.id}`}
                               size="sm"
                               color="primary"
                               variant="flat"
-                              onPress={() => {
-                                setSelectedAssignmentId(assignment.id);
-                                setViewSubmissionsOpen(true);
-                              }}
                             >
                               <Icon
                                 icon="lucide:folder-open"
@@ -357,17 +339,26 @@ export const Assignments = ({ session, classes }) => {
                               View Submissions
                             </Button>
                           )}
-                          <Button size="sm" variant="flat" onPress={() => {
-                            setAssignmentToEdit(assignment);
-                            setEditModalOpen(true);
-                          }}>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            onPress={() => {
+                              setAssignmentToEdit(assignment);
+                              setEditModalOpen(true);
+                            }}
+                          >
                             <Icon icon="lucide:edit" className="mr-1" />
                             Edit
                           </Button>
-                          <Button size="sm" variant="flat" color="danger" onPress={() => {
-                            setAssignmentToDelete(assignment);
-                            setDeleteModalOpen(true);
-                          }}>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            onPress={() => {
+                              setAssignmentToDelete(assignment);
+                              setDeleteModalOpen(true);
+                            }}
+                          >
                             <Icon icon="lucide:trash-2" />
                           </Button>
                         </div>
@@ -391,156 +382,6 @@ export const Assignments = ({ session, classes }) => {
           </div>
         </CardBody>
       </Card>
-
-      {/* Submissions Modal */}
-      <Modal
-        isOpen={viewSubmissionsOpen}
-        onClose={() => {
-          setViewSubmissionsOpen(false);
-          setSelectedStudentCode(null);
-        }}
-        className="max-h-[95vh] max-w-[100vw] overflow-y-auto"
-      >
-        <ModalContent className="w-full">
-          <ModalHeader className="bg-zinc-900 border-b border-zinc-800 text-white font-semibold text-lg">
-            Student Submissions
-          </ModalHeader>
-
-          <div className="flex gap-4 p-4 h-[100vh]">
-            {/* Left: Student Selector */}
-            <div className="w-1/6 border-r border-zinc-700 pr-2 overflow-y-auto">
-              <h4 className="text-white font-semibold text-sm mb-2">
-                Students
-              </h4>
-              {submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className={`cursor-pointer p-2 rounded-md mb-1 border ${
-                    selectedStudentCode?.id === submission.id
-                      ? "bg-zinc-800 border-white"
-                      : "border-zinc-700 hover:bg-zinc-800"
-                  }`}
-                  onClick={() => {
-                    setSelectedStudentCode(submission);
-                    setComments({});
-                    setActiveLine(null);
-                  }}
-                >
-                  {submission.student_name}
-                </div>
-              ))}
-            </div>
-
-            {/* Center: Code + Comments */}
-            <div className="w-2/3 px-4 overflow-y-auto">
-              {selectedStudentCode ? (
-                <>
-                  <h3 className="mb-2 font-medium text-white">
-                    Code from {selectedStudentCode.student_name}
-                  </h3>
-                  <div className="bg-black rounded-md border border-zinc-700 p-2 mb-4">
-                    <CodeEditor
-                      key={selectedStudentCode?.id}
-                      language="python"
-                      editorRef={editorRef}
-                      initialLockedLines={[]}
-                      role="viewer"
-                      starterCode={
-                        selectedStudentCode.code || "# No code submitted"
-                      }
-                      height="600px"
-                      disableMenu={true}
-                      onLineClick={(line) => setActiveLine(line)}
-                    />
-                  </div>
-                  {activeLine !== null && (
-                    <div className="mt-2 p-2 border-t border-zinc-600">
-                      <p className="text-sm text-white mb-1">
-                        Add comment for line {activeLine}:
-                      </p>
-                      <textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        rows={2}
-                        className="w-full text-black rounded-md p-2"
-                        placeholder="Write your comment here..."
-                      />
-                      <div className="mt-2 flex justify-end">
-                        <Button
-                          size="sm"
-                          onPress={() => {
-                            setComments((prev) => ({
-                              ...prev,
-                              [activeLine]: [
-                                ...(prev[activeLine] || []),
-                                newComment,
-                              ],
-                            }));
-                            setNewComment("");
-                            setActiveLine(null);
-                          }}
-                        >
-                          Add Comment
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {Object.keys(comments).length > 0 && (
-                    <div className="mt-4 bg-zinc-900 p-4 rounded-lg text-white text-sm">
-                      <h3 className="font-medium mb-2">Inline Comments</h3>
-                      <ul className="space-y-2">
-                        {Object.entries(comments).map(([line, msgs]) => (
-                          <li key={line}>
-                            <span className="text-zinc-400">Line {line}:</span>
-                            <ul className="ml-4 list-disc list-inside">
-                              {msgs.map((msg, i) => (
-                                <li key={i}>{msg}</li>
-                              ))}
-                            </ul>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <Button
-                    variant="flat"
-                    color="success"
-                    className="mt-4 min-w-[100px]"
-                    onPress={runCode}
-                    isDisabled={isRunning}
-                  >
-                    <Icon icon="lucide:play" />
-                    {isRunning ? "Running..." : "Run"}
-                  </Button>
-                  {output && (
-                    <div className="mt-4 p-4 bg-black text-white rounded-lg">
-                      <h3 className="text-sm text-zinc-400 mb-2">Output:</h3>
-                      <pre className="whitespace-pre-wrap">{output}</pre>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-400 italic">
-                  Select a student to view their submission.
-                </p>
-              )}
-            </div>
-
-            {/* Right: Rubric */}
-            <div className="w-1/6 border-l border-zinc-700 pl-2 text-sm text-white overflow-y-auto">
-              <h4 className="text-lg font-semibold mb-2">Rubric</h4>
-              <ul className="space-y-2">
-                <li>✅ Code compiles without errors</li>
-                <li>✅ Meets assignment requirements</li>
-                <li>✅ Clean and readable formatting</li>
-                <li>✅ Proper use of functions/components</li>
-                <li>✅ Handles edge cases</li>
-                <li>✅ Documentation or comments included</li>
-              </ul>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
     </div>
   );
 };

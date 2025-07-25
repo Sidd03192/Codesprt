@@ -1,5 +1,5 @@
 import { use } from "react"; // Don't forget to import `use`
-import { CodingInterface } from "../../student-workspace"; // Adjust path if needed
+import { CodingInterface } from "../../../components/student-workspace"; // Adjust path if needed
 
 export default function AssignmentPage({ params }) {
   // 1. Unwrap the params object to safely access its properties

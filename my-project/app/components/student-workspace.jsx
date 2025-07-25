@@ -49,10 +49,10 @@ import {
 } from "@heroui/react";
 import { supabase } from "../supabase-client";
 import Editor from "@monaco-editor/react";
-import { getAssignmentDetails, saveAssignment } from "./api";
-import { executeCode } from "../components/editor/api";
+import { getAssignmentDetails, saveAssignment } from "../student-dashboard/api";
+import { executeCode } from "./editor/api";
 import "../components/assignment/RichText/editor-styles.css"; // Import highlight.js theme
-import { Results } from "../components/results";
+import { Results } from "./results";
 import {
   Modal,
   ModalContent,
@@ -61,11 +61,18 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/react";
-import CodeEditor from "../components/editor/code-editor";
-import { RichTextEditor } from "../components/assignment/RichText/rich-description";
+import CodeEditor from "./editor/code-editor";
+import { RichTextEditor } from "./assignment/RichText/rich-description";
 import { Icon } from "@iconify/react";
 
-export const CodingInterface = ({ session, id, isPreview, previewData }) => {
+export const CodingInterface = ({
+  session,
+  id,
+  isPreview,
+  previewData,
+  role,
+  data,
+}) => {
   const [activeTab, setActiveTab] = useState("Description");
   const [dueDate, setDueDate] = useState(null);
   const [consoleTab, setConsoleTab] = useState("testcases");
@@ -97,6 +104,11 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
     if (isPreview) {
       setAssignmentData(previewData);
       console.log("Preview mode, skipping data fetch.");
+      return;
+    }
+    if (data) {
+      setAssignmentData(data);
+      console.log("Assignment data provided, skipping data fetch.");
       return;
     }
     if (!id) {
@@ -146,7 +158,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
   }, []);
 
   const saveAssignmentData = async (isSubmit) => {
-    if (isPreview) {
+    if (isPreview || role == "teacher") {
       console.warn("Preview mode, skipping save/submit.");
       return;
     }
@@ -264,6 +276,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
     []
   );
   const handleResetCode = () => {
+    if (role == "teacher") return;
     if (initialCode) {
       editorRef.current?.setValue(initialCode);
     } else {
@@ -525,7 +538,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                 </div>
               )}
               {activeTab === "results" && (
-                <div className="w-full h-full flex  custom-scrollbar max-h-full overflow-scroll">
+                <div className="w-full h-full flex  max-h-full ">
                   <div className="  w-full   max-h-full bg-transparent">
                     {/* <Icon
                       icon="lucide:bubbles"
@@ -534,7 +547,7 @@ export const CodingInterface = ({ session, id, isPreview, previewData }) => {
                     <p className="text-gray-400">
                       Relaxxx.... No grades or results available yet.
                     </p> */}
-                    <Results />
+                    <Results editorRef={editorRef} />
                   </div>
                 </div>
               )}

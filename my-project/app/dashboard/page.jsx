@@ -2,6 +2,7 @@
 import { insertUserIfNew } from "./api";
 import { getClasses } from "./api";
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Drawer,
   DrawerContent,
@@ -29,10 +30,16 @@ export default function Dashboard() {
   const [session, setSession] = useState(null);
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        if (!session) {
+          router.push("/authentication");
+          return;
+        }
         setSession(session);
+
         setIsLoading(false);
       }
     );
@@ -41,6 +48,12 @@ export default function Dashboard() {
     };
   }, []);
 
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    console.log("User signed out");
+    console.log("session:", await supabase.auth.session());
+    router.push("/authentication");
+  };
   // for changes to the classes table.
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -178,7 +191,7 @@ export default function Dashboard() {
   };
 
   return isLoading ? (
-    <div className="flex h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e]">
+    <div className="flex h-screen w-full bg-gradient-to-br from-[#1e2b22] via-[#1e1f2b] to-[#2b1e2e] text-center items-center justify-center">
       <Spinner color="success" />
     </div>
   ) : (
@@ -273,10 +286,20 @@ export default function Dashboard() {
               <div></div>
             </div>
           </div>
-          <Avatar
-            src="https://img.heroui.chat/image/avatar?w=40&h=40&u=teacher1"
-            className="h-8 w-8"
-          />
+          <div className="flex items-center gap-2 ml-auto">
+            <Avatar
+              src="https://img.heroui.chat/image/avatar?w=40&h=40&u=teacher1"
+              className="h-8 w-8"
+            />
+            <Button
+              variant="light"
+              color="danger"
+              onPress={() => signOut()}
+              className="ml-2"
+            >
+              <Icon icon="lucide:log-out" className="text-lg" />
+            </Button>
+          </div>
         </header>
 
         {/* Page Content */}

@@ -56,7 +56,7 @@ export const getAssignmentDetails = async (assignment_id) => {
   const { data, error } = await supabase
     .from("assignments")
     .select(
-      "id, title, description, language, code_template, hints, open_at, due_at, status, locked_lines, hidden_lines, allow_late_submission, allow_copy_paste, allow_auto_complete, auto_grade, show_results, testing_url "
+      "id, title, description, language, code_template, hints, open_at, due_at, status, locked_lines,  allow_late_submission, allow_copy_paste, allow_auto_complete, auto_grade, show_results, testing_url "
     )
     .eq("id", assignment_id)
     .single(); // Use .single() to get a single object instead of an array
@@ -178,17 +178,15 @@ export const saveAssignment = async (
   }
   let date = null;
 
-  let satus = isSubmitting ? "submitted" : "draft";
+  let status = isSubmitting ? "submitted" : "draft";
   let gradingResult = null; // should have score and feedback
   if (isSubmitting) {
     console.log("Submitting... preparing to call grading API.");
     let gradingResult = null;
 
     try {
-      // --- Step 1: Call your /api/grade endpoint ---
       const response = await fetch(
-        // When calling from the server, you need the full URL
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/grade`,
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/grade`, // full URL cause we on server
         {
           method: "POST",
           headers: {
@@ -200,7 +198,6 @@ export const saveAssignment = async (
           }),
         }
       );
-
       if (!response.ok) {
         // If the API returns an error status (like 500), handle it
         const errorBody = await response.json();
@@ -208,9 +205,8 @@ export const saveAssignment = async (
           errorBody.error || `API call failed with status: ${response.status}`
         );
       }
-      // implement a queue system to handle large ammount of grading requests because parallel requests might be slow?
-
       gradingResult = await response.json();
+
       console.log("Received grading result from API:", gradingResult);
     } catch (apiError) {
       console.error("Fatal: Failed to get grading result from API.", apiError);
@@ -223,7 +219,7 @@ export const saveAssignment = async (
     .update({
       submitted_code: student_code,
       submitted_at: date,
-      satus: satus,
+      status: status,
       autograder_output: gradingResult.output,
       grade: gradingResult.score || null,
     })
