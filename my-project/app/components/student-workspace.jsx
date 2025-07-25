@@ -105,11 +105,7 @@ export const CodingInterface = ({
       console.log("Preview mode, skipping data fetch.");
       return;
     }
-    if (data) {
-      setAssignmentData(data);
-      console.log("Assignment data provided, skipping data fetch.");
-      return;
-    }
+
     if (!id) {
       console.log("No assignment ID provided.");
       return;
@@ -159,9 +155,9 @@ export const CodingInterface = ({
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-  
+
     const reader = new FileReader();
-  
+
     if (!file.name.endsWith(".zip")) {
       reader.onload = (e) => {
         editorRef.current?.setValue(e.target.result);
@@ -175,12 +171,12 @@ export const CodingInterface = ({
           const firstCodeFile = Object.keys(zipContent.files).find((filename) =>
             /\.(java|py|txt|js|cpp)$/i.test(filename)
           );
-  
+
           if (!firstCodeFile) {
             alert("No code file found in the ZIP.");
             return;
           }
-  
+
           const code = await zipContent.files[firstCodeFile].async("text");
           editorRef.current?.setValue(code);
         } catch (err) {
@@ -191,7 +187,6 @@ export const CodingInterface = ({
     }
     event.target.value = null;
   };
-  
 
   const saveAssignmentData = async (isSubmit) => {
     if (isPreview || role == "teacher") {
@@ -671,7 +666,7 @@ export const CodingInterface = ({
             </CardHeader>
 
             {/* Code Editor */}
-            
+
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Spinner />
@@ -738,11 +733,11 @@ export const CodingInterface = ({
             </div>
             {/* Console Content */}
             {output && (
-                <div className=" h-[230px] mt-4 p-4 bg-black text-white rounded-lg">
-                  <h3 className="flex text-sm text-zinc-400 mb-2">Output:</h3>
-                  <p className="whitespace-pre-wrap text-white"> ~ % {output}</p>
-                </div>
-              )}
+              <div className=" h-[230px] mt-4 p-4 bg-black text-white rounded-lg">
+                <h3 className="flex text-sm text-zinc-400 mb-2">Output:</h3>
+                <p className="whitespace-pre-wrap text-white"> ~ % {output}</p>
+              </div>
+            )}
           </div>
 
           {/* Action Bar */}
@@ -845,7 +840,6 @@ export const CodingInterface = ({
                         >
                           Submit
                         </Button>
-
                       </ModalFooter>
                     </>
                   )}

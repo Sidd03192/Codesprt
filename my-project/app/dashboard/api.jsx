@@ -4,6 +4,24 @@ import { supabase } from ".././supabase-client";
 import { useToast } from "@heroui/react";
 import { createClient } from "../../utils/supabase/server";
 
+export const googleLogin = async () => {
+  const supabase = createClient();
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+    });
+
+    if (error) {
+      console.error("OAuth Sign-in Error:", error.message);
+    } else {
+      console.log("OAuth redirecting…", data);
+    }
+  } catch (err) {
+    console.error("Unexpected error during Google Sign-in:", err.message);
+  }
+  console.log("Google login successs");
+};
+
 export const insertUserIfNew = async (role) => {
   const {
     data: { user },
