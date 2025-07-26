@@ -112,7 +112,7 @@ const AccordionSection = ({
   items,
   itemOverrides,
   onOverrideChange,
-  viewMode,
+  viewMode = "student",
   icon
 }) => {
   const [openItems, setOpenItems] = useState({});
