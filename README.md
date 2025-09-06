@@ -1,0 +1,1 @@
+An application to start teaching. We at CodeSprout want to create a seamless classroom environment where students can learn effectively while giving teachers a way to use AI to autogenerate assignments and grade. Welcome to the future of education.
